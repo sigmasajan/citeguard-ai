@@ -5,26 +5,50 @@
 const state = {
   documentText: '', documentTitle: '', verifyResults: null,
   selectedClaimId: null, activeFilter: 'all', viewMode: 'standard',
-  isMockMode: false, history: []
+  isMockMode: false, history: [],
+  isPaletteOpen: false, isKeymapOpen: false,
+  paletteSelectedIndex: 0, paletteCommands: []
 };
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 const dom = {
+  // Tabs & Triggers
   tabBtns: () => $$('.tab-btn'), tabContents: () => $$('.tab-content'),
   btnLoadDemo: $('#btn-load-demo'), btnVerify: $('#btn-verify'),
   fileInput: $('#file-input'), urlInput: $('#url-input'), btnFetchUrl: $('#btn-fetch-url'),
   docTitle: $('#doc-title'), docIndicator: $('#doc-indicator'), btnClearDoc: $('#btn-clear-doc'),
+  
+  // Panels & Data
   searchClaims: $('#search-claims'), filterPills: () => $$('.filter-pill'),
   claimsList: $('#claims-list'), claimsEmpty: $('#claims-empty'), heatmapTrack: $('#heatmap-track'),
   evidenceContent: $('#evidence-content'), evidenceEmpty: $('#evidence-empty'),
   toggleStandard: $('#toggle-view-standard'), toggleDiff: $('#toggle-view-diff'),
   healthRing: $('#health-ring'), healthVal: $('#health-score-val'), healthGrade: $('#health-score-grade'),
+  
+  // Modals & Drawers
   historyDrawer: $('#history-drawer'), btnToggleHistory: $('#btn-toggle-history'), btnCloseHistory: $('#btn-close-history'), historyList: $('#history-list'),
-  loadingOverlay: $('#loading-overlay'), toastContainer: $('#toast-container'),
+  cmdPaletteModal: $('#cmd-palette-modal'), cmdPaletteInput: $('#cmd-palette-input'), cmdPaletteList: $('#cmd-palette-list'), btnOpenPaletteNav: $('#btn-open-palette-nav'),
+  keymapModal: $('#keymap-modal'), btnCloseKeymap: $('#btn-close-keymap'), floatingHotkeys: $('#floating-hotkeys'),
+  
+  // Utils
+  loadingOverlay: $('#loading-overlay'), loadingText: $('#loading-text'), toastContainer: $('#toast-container'),
   apiStatus: $('#api-status'), apiStatusDot: $('#api-status-dot'), mockBadge: $('#mock-badge')
 };
+
+// Available Commands for the Palette
+const allCommands = [
+  { id: 'load_demo', icon: 'flask-conical', text: 'Load Sample Paper', action: () => loadDemoPaper() },
+  { id: 'verify', icon: 'search-check', text: 'Verify Citations', action: () => verifyCitations() },
+  { id: 'clear_doc', icon: 'x-circle', text: 'Clear Document', action: () => clearDocument() },
+  { id: 'filter_mismatch', icon: 'filter', text: 'Filter: Mismatched Claims', action: () => { state.activeFilter = 'Mismatched'; updateFilterPills(); renderClaimsList(); } },
+  { id: 'filter_support', icon: 'filter', text: 'Filter: Supported Claims', action: () => { state.activeFilter = 'Supported'; updateFilterPills(); renderClaimsList(); } },
+  { id: 'filter_all', icon: 'filter', text: 'Clear Filters', action: () => { state.activeFilter = 'all'; updateFilterPills(); renderClaimsList(); } },
+  { id: 'export_json', icon: 'braces', text: 'Download Audit (.json)', action: () => exportReport('json') },
+  { id: 'export_md', icon: 'file-text', text: 'Download Audit (.md)', action: () => exportReport('md') },
+  { id: 'history', icon: 'history', text: 'Toggle History Sessions', action: () => dom.historyDrawer.classList.toggle('open') }
+];
 
 document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) lucide.createIcons();
@@ -34,12 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function bindEvents() {
-  // Tabs & Nav
-  dom.tabBtns().forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
-  dom.btnToggleHistory.addEventListener('click', () => dom.historyDrawer.classList.add('open'));
-  dom.btnCloseHistory.addEventListener('click', () => dom.historyDrawer.classList.remove('open'));
-  
-  // Document Loading
+  // Document Operations
   dom.btnLoadDemo.addEventListener('click', loadDemoPaper);
   dom.btnVerify.addEventListener('click', verifyCitations);
   dom.fileInput.addEventListener('change', handleFileUpload);
@@ -47,36 +66,64 @@ function bindEvents() {
   dom.btnFetchUrl.addEventListener('click', fetchFromUrl);
 
   // Filters & Toggles
-  dom.filterPills().forEach(p => p.addEventListener('click', () => { state.activeFilter = p.dataset.filter; $$('.filter-pill').forEach(x => x.classList.remove('active', 'border-opacity-100')); p.classList.add('active'); renderClaimsList(); }));
+  dom.filterPills().forEach(p => p.addEventListener('click', () => { state.activeFilter = p.dataset.filter; updateFilterPills(); renderClaimsList(); }));
   dom.searchClaims.addEventListener('input', renderClaimsList);
-  
-  dom.toggleStandard.addEventListener('click', () => { setViewMode('standard'); });
-  dom.toggleDiff.addEventListener('click', () => { setViewMode('diff'); });
+  dom.toggleStandard.addEventListener('click', () => setViewMode('standard'));
+  dom.toggleDiff.addEventListener('click', () => setViewMode('diff'));
 
-  // Exports
-  $('#btn-export-json').addEventListener('click', () => exportReport('json'));
-  $('#btn-export-md').addEventListener('click', () => exportReport('md'));
-  $('#btn-run-benchmark').addEventListener('click', runBenchmark);
+  // Modals & Drawers
+  dom.btnToggleHistory.addEventListener('click', () => dom.historyDrawer.classList.add('open'));
+  dom.btnCloseHistory.addEventListener('click', () => dom.historyDrawer.classList.remove('open'));
+  dom.floatingHotkeys.addEventListener('click', () => openKeymapModal());
+  dom.btnCloseKeymap.addEventListener('click', () => closeModals());
+  $('#keymap-backdrop').addEventListener('click', closeModals);
+  $('#cmd-palette-backdrop').addEventListener('click', closeModals);
+  dom.btnOpenPaletteNav.addEventListener('click', openCommandPalette);
+
+  // Command Palette Input
+  dom.cmdPaletteInput.addEventListener('input', () => renderCommandPalette());
 
   // Global Keybinds
   document.addEventListener('keydown', handleKeyboardShortcuts);
 }
 
+/* ==========================================================================
+   Global Keyboard Shortcuts (J/K, Cmd+K, Esc, /)
+   ========================================================================== */
+
 function handleKeyboardShortcuts(e) {
-  // Global '/' to search
-  if (e.key === '/' && document.activeElement !== dom.searchClaims) {
-    e.preventDefault(); dom.searchClaims.focus(); return;
+  // Cmd+K or Ctrl+K -> Command Palette
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    state.isPaletteOpen ? closeModals() : openCommandPalette();
+    return;
   }
-  // Escape to reset/close
+
+  // Escape -> Close Modals or Reset Filters
   if (e.key === 'Escape') {
+    if (state.isPaletteOpen || state.isKeymapOpen) { closeModals(); return; }
     if (document.activeElement === dom.searchClaims) dom.searchClaims.blur();
     dom.historyDrawer.classList.remove('open');
     dom.searchClaims.value = '';
     dom.filterPills()[0].click(); 
     return;
   }
-  // J/K or Up/Down for claims navigation
-  if ((e.key === 'j' || e.key === 'k' || e.key === 'ArrowDown' || e.key === 'ArrowUp') && document.activeElement !== dom.searchClaims && document.activeElement !== dom.urlInput) {
+
+  // '/' -> Focus Search Claims (only if modals are closed and not already in input)
+  if (e.key === '/' && !state.isPaletteOpen && !state.isKeymapOpen && document.activeElement !== dom.searchClaims && document.activeElement !== dom.urlInput) {
+    e.preventDefault(); dom.searchClaims.focus(); return;
+  }
+
+  // Command Palette Arrow Navigation
+  if (state.isPaletteOpen) {
+    if (e.key === 'ArrowDown') { e.preventDefault(); navigatePalette(1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); navigatePalette(-1); return; }
+    if (e.key === 'Enter') { e.preventDefault(); executeSelectedCommand(); return; }
+    return;
+  }
+
+  // J/K or Up/Down -> Navigate Claims (Smooth scroll + Ring Focus)
+  if ((e.key === 'j' || e.key === 'k' || e.key === 'ArrowDown' || e.key === 'ArrowUp') && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
     if (!state.verifyResults) return;
     e.preventDefault();
     const items = Array.from(dom.claimsList.querySelectorAll('.claim-card'));
@@ -94,9 +141,73 @@ function handleKeyboardShortcuts(e) {
   }
 }
 
-function switchTab(tabId) {
-  dom.tabBtns().forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabId));
-  dom.tabContents().forEach(content => content.classList.toggle('active', content.id.replace('tab-', '') === tabId));
+/* ==========================================================================
+   Command Palette Logic
+   ========================================================================== */
+
+function openCommandPalette() {
+  state.isPaletteOpen = true;
+  dom.cmdPaletteModal.classList.remove('hidden');
+  dom.cmdPaletteInput.value = '';
+  renderCommandPalette();
+  setTimeout(() => dom.cmdPaletteInput.focus(), 50);
+}
+
+function openKeymapModal() {
+  state.isKeymapOpen = true;
+  dom.keymapModal.classList.remove('hidden');
+}
+
+function closeModals() {
+  state.isPaletteOpen = false; state.isKeymapOpen = false;
+  dom.cmdPaletteModal.classList.add('hidden');
+  dom.keymapModal.classList.add('hidden');
+}
+
+function renderCommandPalette() {
+  const query = dom.cmdPaletteInput.value.toLowerCase();
+  state.paletteCommands = allCommands.filter(c => c.text.toLowerCase().includes(query));
+  state.paletteSelectedIndex = 0;
+  
+  dom.cmdPaletteList.innerHTML = '';
+  if (state.paletteCommands.length === 0) {
+    dom.cmdPaletteList.innerHTML = `<div class="p-4 text-center text-sm text-slate-500">No matching commands found.</div>`;
+    return;
+  }
+  
+  state.paletteCommands.forEach((cmd, idx) => {
+    const div = document.createElement('div');
+    div.className = `cmd-item flex items-center gap-3 p-3 rounded-xl cursor-pointer text-slate-300 hover:bg-slate-800/80 ${idx === 0 ? 'active' : ''}`;
+    div.innerHTML = `<i data-lucide="${cmd.icon}" class="w-4 h-4 text-slate-400"></i><span class="text-sm font-medium">${cmd.text}</span>`;
+    div.addEventListener('click', () => { state.paletteSelectedIndex = idx; executeSelectedCommand(); });
+    dom.cmdPaletteList.appendChild(div);
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
+function navigatePalette(dir) {
+  const items = dom.cmdPaletteList.querySelectorAll('.cmd-item');
+  if (!items.length) return;
+  items[state.paletteSelectedIndex].classList.remove('active');
+  state.paletteSelectedIndex = (state.paletteSelectedIndex + dir + items.length) % items.length;
+  items[state.paletteSelectedIndex].classList.add('active');
+  items[state.paletteSelectedIndex].scrollIntoView({ block: 'nearest' });
+}
+
+function executeSelectedCommand() {
+  const cmd = state.paletteCommands[state.paletteSelectedIndex];
+  if (cmd) { closeModals(); cmd.action(); }
+}
+
+/* ==========================================================================
+   UI Helpers & Render Logic
+   ========================================================================== */
+
+function updateFilterPills() {
+  dom.filterPills().forEach(p => {
+    p.classList.toggle('active', p.dataset.filter === state.activeFilter);
+    p.classList.toggle('border-opacity-100', p.dataset.filter === state.activeFilter);
+  });
 }
 
 function setViewMode(mode) {
@@ -106,145 +217,8 @@ function setViewMode(mode) {
   if (state.selectedClaimId) selectClaim(state.selectedClaimId);
 }
 
-/* ==========================================================================
-   API & Core Logic
-   ========================================================================== */
-
-async function apiFetch(url, options = {}) {
-  if (state.isMockMode) return getMockData(url, options);
-  try {
-    const res = await fetch(url, options);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  } catch (err) {
-    enableMockMode();
-    return getMockData(url, options);
-  }
-}
-
-function enableMockMode() {
-  if (state.isMockMode) return;
-  state.isMockMode = true;
-  dom.mockBadge.classList.replace('hidden', 'flex');
-  dom.apiStatus.textContent = 'Offline';
-  dom.apiStatusDot.classList.replace('bg-emerald-500', 'bg-rose-500');
-}
-
-async function checkHealth() {
-  try { await fetch('/api/health', { signal: AbortSignal.timeout(1500) }); dom.apiStatus.textContent = 'Connected'; }
-  catch { enableMockMode(); }
-}
-
-function showToast(msg, type='info') {
-  const t = document.createElement('div');
-  t.className = `flex items-center gap-3 px-4 py-3 rounded-xl border bg-slate-900/90 text-white shadow-xl animate-slide-up z-[300]`;
-  t.innerHTML = `<span class="text-sm">${escapeHtml(msg)}</span>`;
-  dom.toastContainer.appendChild(t);
-  setTimeout(() => { t.style.opacity=0; setTimeout(()=>t.remove(),300); }, 3000);
-}
-
-/* Document Uploads */
-async function loadDemoPaper() {
-  dom.loadingOverlay.classList.remove('hidden');
-  try {
-    const data = await apiFetch('/api/sample');
-    setDoc(data.document_text, data.title || 'Attention Is All You Need');
-  } finally { dom.loadingOverlay.classList.add('hidden'); }
-}
-
-async function handleFileUpload(e) {
-  const f = e.target.files[0]; if(!f) return;
-  const name = f.name;
-  if(name.endsWith('.pdf') && !state.isMockMode) {
-    dom.loadingOverlay.classList.remove('hidden');
-    try {
-      const fd = new FormData(); fd.append('file', f);
-      const data = await apiFetch('/api/extract-pdf', {method:'POST', body:fd});
-      setDoc(data.document_text, name);
-    } finally { dom.loadingOverlay.classList.add('hidden'); }
-  } else {
-    const r = new FileReader();
-    r.onload = ev => setDoc(ev.target.result, name);
-    name.endsWith('.pdf') ? r.onload({target:{result:"Mock PDF Extracted."}}) : r.readAsText(f);
-  }
-}
-
-async function fetchFromUrl() {
-  const url = dom.urlInput.value.trim(); if(!url) return;
-  dom.loadingOverlay.classList.remove('hidden');
-  try {
-    const data = await apiFetch('/api/fetch-url', {method:'POST', body:JSON.stringify({url})});
-    setDoc(data.document_text, data.title || url);
-  } finally { dom.loadingOverlay.classList.add('hidden'); }
-}
-
-function setDoc(txt, title) {
-  state.documentText = txt; state.documentTitle = title;
-  dom.docIndicator.classList.remove('hidden'); dom.docTitle.textContent = title;
-  dom.btnVerify.disabled = false; dom.urlInput.value = ''; dom.fileInput.value='';
-}
-
-function clearDocument() {
-  state.documentText = ''; state.verifyResults = null; state.selectedClaimId = null;
-  dom.docIndicator.classList.add('hidden'); dom.btnVerify.disabled = true;
-  dom.claimsList.innerHTML = ''; dom.heatmapTrack.innerHTML = ''; dom.evidenceContent.innerHTML = '';
-  updateKPIs({supported:0, weakly_supported:0, mismatched:0, unverifiable:0});
-}
-
-/* Verification */
-async function verifyCitations() {
-  if (!state.documentText) return;
-  dom.loadingOverlay.classList.remove('hidden');
-  try {
-    const data = await apiFetch('/api/verify', {method:'POST', body:JSON.stringify({document_text:state.documentText})});
-    state.verifyResults = data;
-    state.selectedClaimId = null;
-    
-    updateKPIs(data.summary);
-    renderClaimsList();
-    resetEvidencePanel();
-    saveToHistory(data);
-    showToast('Verification Complete', 'success');
-  } finally { dom.loadingOverlay.classList.add('hidden'); }
-}
-
-/* ==========================================================================
-   UI Features (Health Gauge, Heatmap, Diff View)
-   ========================================================================== */
-
-function updateKPIs(s) {
-  ['supported','weak','mismatched','unverifiable'].forEach(k => {
-    const el = $(`#count-${k}`); if(el) el.textContent = s[k==="weak"?"weakly_supported":k] || 0;
-  });
-  
-  // Calculate Document Health Score
-  const total = s.total_claims || 1;
-  if(total === 1 && !s.supported) {
-    dom.healthVal.textContent = '—'; dom.healthGrade.textContent = 'Grade: N/A';
-    dom.healthRing.style.strokeDashoffset = 226; // reset
-    return;
-  }
-  
-  // Scoring formula: Supported=1, Weak=0.5, Mismatched/Unverified=0
-  const score = Math.round(((s.supported + (s.weakly_supported * 0.5)) / total) * 100);
-  dom.healthVal.textContent = score;
-  
-  const circ = 226; // 2 * PI * 36
-  dom.healthRing.style.strokeDashoffset = circ - (score/100)*circ;
-  
-  let grade = 'F', color = '#f43f5e';
-  if(score>=90){grade='A'; color='#4ade80';} else if(score>=80){grade='B'; color='#818cf8';} else if(score>=70){grade='C'; color='#fbbf24';}
-  
-  dom.healthGrade.textContent = `Grade: ${grade}`;
-  dom.healthRing.style.stroke = color;
-  dom.healthVal.style.color = color;
-}
-
 function getVC(v) {
-  const c = { 
-    supported: {c:'emerald', e:'🟢'}, weakly_supported: {c:'amber', e:'🟡'},
-    mismatched: {c:'rose', e:'🔴'}, unverifiable: {c:'indigo', e:'⚪'}
-  }[v.toLowerCase().replace(' ','_')] || {c:'slate', e:'⚪'};
+  const c = { supported: {c:'emerald', e:'🟢'}, weakly_supported: {c:'amber', e:'🟡'}, mismatched: {c:'rose', e:'🔴'}, unverifiable: {c:'indigo', e:'⚪'} }[v.toLowerCase().replace(' ','_')] || {c:'slate', e:'⚪'};
   return c;
 }
 
@@ -258,18 +232,18 @@ function renderClaimsList() {
     (c.claim_text.toLowerCase().includes(sq) || (c.cited_reference||'').toLowerCase().includes(sq))
   );
 
-  dom.claimsList.innerHTML = filtered.length ? '' : '<div class="text-center text-slate-500 py-10 text-xs">No claims match filters.</div>';
-  dom.heatmapTrack.innerHTML = ''; // Reset Heatmap
+  dom.claimsList.innerHTML = filtered.length ? '' : '<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 text-xs p-6"><i data-lucide="search-x" class="w-6 h-6 mb-2"></i>No claims match search.</div>';
+  dom.heatmapTrack.innerHTML = ''; 
 
   filtered.forEach((claim, i) => {
     const vc = getVC(claim.verdict);
-    const sel = state.selectedClaimId === claim.claim_id ? `border-l-4 border-${vc.c}-500 bg-slate-800/60` : `border-l-2 border-${vc.c}-500/50 bg-slate-900/40`;
+    // Smooth Scale & Ring applied if selected
+    const isSelected = state.selectedClaimId === claim.claim_id;
+    const selClasses = isSelected ? `ring-2 ring-indigo-500 scale-[1.01] bg-slate-800/80 shadow-lg border-${vc.c}-500` : `bg-slate-900/40 border-slate-700/50 hover:bg-slate-800/40 scale-100`;
     
-    // Build Card
     const card = document.createElement('div');
-    card.className = `claim-card rounded-xl p-3 border border-slate-700/50 ${sel} mb-2`;
+    card.className = `claim-card rounded-xl p-3 border-l-4 transition-all duration-200 ${selClasses} mb-2`;
     card.dataset.claimId = claim.claim_id;
-    card.tabIndex = 0;
     
     card.innerHTML = `
       <div class="flex justify-between items-start mb-1">
@@ -281,10 +255,9 @@ function renderClaimsList() {
     card.addEventListener('click', () => selectClaim(claim.claim_id));
     dom.claimsList.appendChild(card);
 
-    // Build Heatmap Tick (Relative position based on original array index to map document position)
+    // Document Heatmap Tick
     const originalIndex = res.findIndex(r => r.claim_id === claim.claim_id);
-    const topPct = (originalIndex / Math.max(res.length - 1, 1)) * 95; // 0 to 95% down the bar
-    
+    const topPct = (originalIndex / Math.max(res.length - 1, 1)) * 95; 
     const tick = document.createElement('div');
     tick.className = `heatmap-tick bg-${vc.c}-500 shadow-[0_0_8px_rgba(var(--tw-colors-${vc.c}-500),0.8)]`;
     tick.style.top = `${topPct}%`;
@@ -292,42 +265,32 @@ function renderClaimsList() {
     tick.addEventListener('click', () => { selectClaim(claim.claim_id); card.scrollIntoView({behavior:'smooth', block:'center'}); });
     dom.heatmapTrack.appendChild(tick);
   });
+  if (window.lucide) lucide.createIcons();
 }
 
 function selectClaim(id) {
   state.selectedClaimId = id;
-  $$('.claim-card').forEach(c => {
-    const isSel = parseInt(c.dataset.claimId) === id;
-    c.classList.toggle('border-l-4', isSel); c.classList.toggle('bg-slate-800/60', isSel);
-    c.classList.toggle('border-l-2', !isSel); c.classList.toggle('bg-slate-900/40', !isSel);
-  });
+  // Re-render claims list purely to apply the scale/ring logic easily without complex DOM class-swapping
+  renderClaimsList();
   const claim = state.verifyResults.results.find(r => r.claim_id === id);
   if(claim) renderEvidence(claim);
 }
 
-// Side-by-Side Diff Logic (Heuristic matching for numbers/keywords)
+// Side-by-Side Diff Logic
 function generateDiffHtml(claimTxt, sourceTxt) {
   if (!sourceTxt) return { c: escapeHtml(claimTxt), s: '<i>No source available</i>' };
-  
-  // Very crude hackathon diff: Highlight numbers or capitalized words in Claim missing in Source
-  const sNorm = sourceTxt.toLowerCase();
-  const cNorm = claimTxt.toLowerCase();
-  
-  const cWords = claimTxt.split(/(\s+)/);
-  const sWords = sourceTxt.split(/(\s+)/);
+  const sNorm = sourceTxt.toLowerCase(), cNorm = claimTxt.toLowerCase();
+  const cWords = claimTxt.split(/(\s+)/), sWords = sourceTxt.split(/(\s+)/);
 
   const cHtml = cWords.map(w => {
-    if (w.trim().match(/\d+/) && !sNorm.includes(w.trim().toLowerCase())) 
-      return `<span class="diff-removed">${escapeHtml(w)}</span>`;
+    if (w.trim().match(/\d+/) && !sNorm.includes(w.trim().toLowerCase())) return `<span class="diff-removed">${escapeHtml(w)}</span>`;
     return escapeHtml(w);
   }).join('');
 
   const sHtml = sWords.map(w => {
-    if (w.trim().match(/\d+/) && !cNorm.includes(w.trim().toLowerCase()))
-      return `<span class="diff-added">${escapeHtml(w)}</span>`;
+    if (w.trim().match(/\d+/) && !cNorm.includes(w.trim().toLowerCase())) return `<span class="diff-added">${escapeHtml(w)}</span>`;
     return escapeHtml(w);
   }).join('');
-
   return { c: cHtml, s: sHtml };
 }
 
@@ -340,13 +303,12 @@ function renderEvidence(claim) {
       <div class="mt-4 p-3 rounded-xl bg-${vc.c}-950/40 border border-${vc.c}-500/30">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs font-bold text-${vc.c}-400 uppercase"><i data-lucide="sparkles" class="w-3 h-3 inline mr-1"></i> AI Rewrite Suggestion</span>
-          <button onclick="navigator.clipboard.writeText('${escapeHtml(claim.suggested_rewrite.replace(/'/g,"\\'"))}'); this.innerText='Copied!'" class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-300 hover:text-white transition">Copy Fix</button>
+          <button onclick="navigator.clipboard.writeText('${escapeHtml(claim.suggested_rewrite.replace(/'/g,"\\'"))}'); this.innerText='Copied!'" class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-300 hover:text-white transition shadow-sm border border-slate-700">Copy Fix</button>
         </div>
         <p class="text-sm text-${vc.c}-200 italic font-medium">"${escapeHtml(claim.suggested_rewrite)}"</p>
       </div>`;
   }
 
-  // Handle Standard vs Diff View
   let contentHtml = '';
   if (state.viewMode === 'diff') {
     const diffs = generateDiffHtml(claim.claim_text, claim.evidence_snippet);
@@ -366,30 +328,27 @@ function renderEvidence(claim) {
     contentHtml = `
       <div class="mb-4">
         <h4 class="text-[10px] font-bold text-indigo-400 uppercase mb-1">Document Claim</h4>
-        <div class="p-3 bg-slate-800/40 border-l-2 border-indigo-500 rounded-r-lg text-sm text-slate-200">${escapeHtml(claim.claim_text)}</div>
+        <div class="p-3 bg-slate-800/40 border-l-2 border-indigo-500 rounded-r-lg text-sm text-slate-200 shadow-inner">${escapeHtml(claim.claim_text)}</div>
       </div>
       <div>
         <h4 class="text-[10px] font-bold text-amber-400 uppercase mb-1">Source Passage</h4>
-        <div class="p-3 bg-slate-800/40 border-l-2 border-amber-500 rounded-r-lg text-sm text-slate-300">${claim.evidence_snippet ? escapeHtml(claim.evidence_snippet) : '<i class="text-slate-500">Not available</i>'}</div>
+        <div class="p-3 bg-slate-800/40 border-l-2 border-amber-500 rounded-r-lg text-sm text-slate-300 shadow-inner">${claim.evidence_snippet ? escapeHtml(claim.evidence_snippet) : '<i class="text-slate-500">Not available</i>'}</div>
       </div>
     `;
   }
 
   dom.evidenceContent.innerHTML = `
     <div class="animate-fade-in pb-8">
-      <div class="flex items-center gap-3 mb-4 p-3 rounded-xl bg-slate-900 border border-slate-700">
+      <div class="flex items-center gap-3 mb-4 p-3 rounded-xl bg-slate-900/80 border border-slate-700/80 shadow-md">
         <span class="px-2 py-1 rounded bg-${vc.c}-950/60 text-${vc.c}-400 text-xs font-bold border border-${vc.c}-700/50 uppercase">${vc.e} ${claim.verdict}</span>
         <span class="text-xs text-slate-400">Score: <span class="font-mono text-white">${Math.round(claim.confidence*100)}%</span></span>
-        <span class="ml-auto text-xs text-slate-500 flex items-center gap-1"><i data-lucide="book" class="w-3 h-3"></i> ${escapeHtml(claim.cited_reference)}</span>
+        <span class="ml-auto text-xs text-slate-400 flex items-center gap-1.5 px-2 py-1 bg-slate-800 rounded-lg"><i data-lucide="book" class="w-3.5 h-3.5 text-indigo-400"></i> ${escapeHtml(claim.cited_reference)}</span>
       </div>
-      
       ${contentHtml}
-
       <div class="mt-4 p-3 rounded-xl bg-purple-950/20 border border-purple-800/20">
         <h4 class="text-[10px] font-bold text-purple-400 uppercase mb-1 flex items-center gap-1"><i data-lucide="brain" class="w-3 h-3"></i> AI Diagnostic</h4>
         <p class="text-sm text-slate-300 leading-relaxed">${escapeHtml(claim.explanation)}</p>
       </div>
-
       ${rewriteHtml}
     </div>
   `;
@@ -397,20 +356,16 @@ function renderEvidence(claim) {
 }
 
 function resetEvidencePanel() {
-  dom.evidenceContent.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 text-sm">Select a claim to inspect</div>`;
+  dom.evidenceContent.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 text-xs"><i data-lucide="mouse-pointer-click" class="w-8 h-8 mb-2 opacity-50"></i>Select a claim to inspect</div>`;
+  if (window.lucide) lucide.createIcons();
 }
 
 /* ==========================================================================
-   Saved Sessions (History Drawer)
+   History Storage & KPIs
    ========================================================================== */
 
 function saveToHistory(data) {
-  const record = {
-    id: Date.now(),
-    title: state.documentTitle || 'Untitled Verification',
-    date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-    data: data
-  };
+  const record = { id: Date.now(), title: state.documentTitle || 'Untitled', date: new Date().toLocaleString(), data: data };
   state.history.unshift(record);
   if(state.history.length > 5) state.history.pop();
   localStorage.setItem('citeguard_history', JSON.stringify(state.history));
@@ -418,11 +373,7 @@ function saveToHistory(data) {
 }
 
 function loadHistoryFromStorage() {
-  try {
-    const raw = localStorage.getItem('citeguard_history');
-    if(raw) state.history = JSON.parse(raw);
-    renderHistory();
-  } catch(e){ console.warn("Failed to load history"); }
+  try { const raw = localStorage.getItem('citeguard_history'); if(raw) { state.history = JSON.parse(raw); renderHistory(); } } catch(e){}
 }
 
 function renderHistory() {
@@ -432,40 +383,114 @@ function renderHistory() {
     const s = item.data.summary;
     const score = Math.round(((s.supported + (s.weakly_supported * 0.5)) / (s.total_claims||1)) * 100);
     const div = document.createElement('div');
-    div.className = 'p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 cursor-pointer transition-colors';
+    div.className = 'p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 cursor-pointer transition-colors shadow-sm';
     div.innerHTML = `
       <div class="flex justify-between items-start mb-1">
         <h4 class="text-xs font-bold text-slate-200 truncate pr-2">${escapeHtml(item.title)}</h4>
         <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 text-emerald-400 font-mono border border-slate-700">${score}%</span>
       </div>
       <p class="text-[10px] text-slate-500 mb-2">${item.date}</p>
-      <div class="flex gap-2 text-[10px]">
-        <span class="text-emerald-400">🟢 ${s.supported}</span>
-        <span class="text-amber-400">🟡 ${s.weakly_supported}</span>
-        <span class="text-rose-400">🔴 ${s.mismatched}</span>
+      <div class="flex gap-2 text-[10px] font-mono">
+        <span class="text-emerald-400">S:${s.supported}</span>
+        <span class="text-amber-400">W:${s.weakly_supported}</span>
+        <span class="text-rose-400">M:${s.mismatched}</span>
       </div>
     `;
     div.addEventListener('click', () => {
       dom.historyDrawer.classList.remove('open');
-      state.verifyResults = item.data;
-      state.documentTitle = item.title;
-      state.documentText = 'Loaded from history';
+      state.verifyResults = item.data; state.documentTitle = item.title; state.documentText = 'Loaded from history';
       dom.docIndicator.classList.remove('hidden'); dom.docTitle.textContent = item.title;
-      updateKPIs(item.data.summary);
-      renderClaimsList();
-      resetEvidencePanel();
+      updateKPIs(item.data.summary); renderClaimsList(); resetEvidencePanel();
       showToast('Session loaded', 'success');
     });
     dom.historyList.appendChild(div);
   });
 }
 
+function updateKPIs(s) {
+  ['supported','weak','mismatched','unverifiable'].forEach(k => { const el = $(`#count-${k}`); if(el) el.textContent = s[k==="weak"?"weakly_supported":k] || 0; });
+  const total = s.total_claims || 1;
+  if(total === 1 && !s.supported) {
+    dom.healthVal.textContent = '—'; dom.healthGrade.textContent = 'Grade: N/A';
+    dom.healthRing.style.strokeDashoffset = 226; return;
+  }
+  const score = Math.round(((s.supported + (s.weakly_supported * 0.5)) / total) * 100);
+  dom.healthVal.textContent = score;
+  dom.healthRing.style.strokeDashoffset = 226 - (score/100)*226;
+  let grade = 'F', color = '#f43f5e';
+  if(score>=90){grade='A'; color='#4ade80';} else if(score>=80){grade='B'; color='#818cf8';} else if(score>=70){grade='C'; color='#fbbf24';}
+  dom.healthGrade.textContent = `Grade: ${grade}`; dom.healthRing.style.stroke = color; dom.healthVal.style.color = color;
+}
+
 /* ==========================================================================
-   Exports & Benchmarks
+   Action Implementations (Load, Verify, Export)
    ========================================================================== */
 
+async function loadDemoPaper() {
+  showLoading('Loading demo...');
+  try {
+    const data = await apiFetch('/api/sample');
+    setDoc(data.document_text, data.title || 'Attention Is All You Need.pdf');
+    showToast('Demo loaded', 'success');
+  } finally { hideLoading(); }
+}
+
+async function handleFileUpload(e) {
+  const f = e.target.files[0]; if(!f) return;
+  const name = f.name;
+  if(name.endsWith('.pdf') && !state.isMockMode) {
+    showLoading('Extracting PDF...');
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      const data = await apiFetch('/api/extract-pdf', {method:'POST', body:fd});
+      setDoc(data.document_text, name);
+      showToast('PDF extracted', 'success');
+    } finally { hideLoading(); }
+  } else {
+    const r = new FileReader(); r.onload = ev => { setDoc(ev.target.result, name); showToast('Loaded', 'success'); };
+    name.endsWith('.pdf') ? r.onload({target:{result:"Mock PDF Extracted."}}) : r.readAsText(f);
+  }
+}
+
+async function fetchFromUrl() {
+  const url = dom.urlInput.value.trim(); if(!url) return showToast('Enter valid URL', 'warn');
+  showLoading('Fetching URL...');
+  try {
+    const data = await apiFetch('/api/fetch-url', {method:'POST', body:JSON.stringify({url})});
+    setDoc(data.document_text, data.title || url);
+    showToast('Fetched successfully', 'success');
+  } finally { hideLoading(); }
+}
+
+function setDoc(txt, title) {
+  state.documentText = txt; state.documentTitle = title;
+  dom.docIndicator.classList.remove('hidden'); dom.docTitle.textContent = title;
+  dom.btnVerify.disabled = false; dom.urlInput.value = ''; dom.fileInput.value='';
+}
+
+function clearDocument() {
+  state.documentText = ''; state.verifyResults = null; state.selectedClaimId = null;
+  dom.docIndicator.classList.add('hidden'); dom.btnVerify.disabled = true;
+  dom.claimsList.innerHTML = '<div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 text-xs p-6"><i data-lucide="file-search" class="w-8 h-8 mb-2"></i>No claims extracted yet</div>'; 
+  dom.heatmapTrack.innerHTML = ''; resetEvidencePanel();
+  updateKPIs({supported:0, weakly_supported:0, mismatched:0, unverifiable:0});
+  if(window.lucide) lucide.createIcons();
+  showToast('Document cleared', 'info');
+}
+
+async function verifyCitations() {
+  if (!state.documentText) return showToast('Please load a document', 'warn');
+  showLoading('Verifying citations...');
+  try {
+    const data = await apiFetch('/api/verify', {method:'POST', body:JSON.stringify({document_text:state.documentText})});
+    state.verifyResults = data; state.selectedClaimId = null; state.activeFilter = 'all';
+    updateFilterPills(); updateKPIs(data.summary); renderClaimsList(); resetEvidencePanel(); saveToHistory(data);
+    showToast('Verification Complete', 'success');
+  } finally { hideLoading(); }
+}
+
 function exportReport(format) {
-  if (!state.verifyResults) return showToast('No data', 'error');
+  if (!state.verifyResults) return showToast('No data to export', 'error');
   const d = state.verifyResults, s = d.summary;
   let content = '', mime = '', ext = '';
   if (format === 'json') {
@@ -475,20 +500,9 @@ function exportReport(format) {
     d.results.forEach(r => content += `## Claim: ${r.claim_text}\n**Verdict:** ${r.verdict}\n**Ref:** ${r.cited_reference}\n**AI:** ${r.explanation}\n\n`);
     mime = 'text/markdown'; ext = '.md';
   }
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([content], {type: mime}));
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], {type: mime}));
   a.download = `citeguard_audit${ext}`; a.click();
-}
-
-async function runBenchmark() {
-  dom.benchmarkResults.innerHTML = '<div class="glass rounded-2xl p-12 text-center text-slate-400">Running suite...</div>';
-  const data = await apiFetch('/api/benchmark');
-  dom.benchmarkResults.innerHTML = `
-    <div class="glass rounded-2xl p-6 text-center">
-      <h3 class="text-2xl font-bold text-emerald-400 mb-2">${Math.round(data.overall_accuracy*100)}% Accuracy</h3>
-      <p class="text-slate-300">${data.correct_predictions} of ${data.total_cases} passed.</p>
-    </div>
-  `;
+  showToast(`Exported ${ext}`, 'success');
 }
 
 function escapeHtml(str) { const d = document.createElement('div'); d.innerText = str||''; return d.innerHTML; }
@@ -504,6 +518,5 @@ function getMockData(url) {
         { claim_id: 2, verdict: "Mismatched", confidence: 0.88, claim_text: "LLMs require 85% less data.", citation_marker: "[2]", cited_reference: "Kaplan 2020", source_found: true, evidence_snippet: "Model performance necessitates 58% more corpora.", explanation: "Contradiction.", suggested_rewrite: "LLMs require significantly larger training datasets." }
       ]
     });
-    if(url === '/api/benchmark') res({ overall_accuracy: 0.85, total_cases: 10, correct_predictions: 8 });
   }, 800));
 }
