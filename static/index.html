@@ -4,52 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CiteGuard AI — Claim-to-Source Citation Verifier</title>
-  <meta name="description" content="AI-powered citation verification tool that extracts claims from research papers and verifies them against source material." />
-
-  <!-- Tailwind CSS v3 CDN -->
+  
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
-          },
-          colors: {
-            brand: {
-              50:  '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
-              400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
-              800: '#3730a3', 900: '#312e81', 950: '#1e1b4b',
-            },
-            verdict: {
-              supported:    { bg: '#052e16', text: '#4ade80', border: '#166534', badge: '#15803d' },
-              weak:         { bg: '#422006', text: '#fbbf24', border: '#854d0e', badge: '#a16207' },
-              mismatched:   { bg: '#450a0a', text: '#f87171', border: '#991b1b', badge: '#b91c1c' },
-              unverifiable: { bg: '#1e1b4b', text: '#a5b4fc', border: '#3730a3', badge: '#4338ca' },
-            },
-          },
-          animation: {
-            'fade-in': 'fadeIn 0.4s ease-out forwards',
-            'slide-up': 'slideUp 0.4s ease-out forwards',
-            'slide-right': 'slideRight 0.35s ease-out forwards',
-            'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
-            'shimmer': 'shimmer 2s linear infinite',
-            'count-up': 'countUp 0.6s ease-out forwards',
-          },
-          keyframes: {
-            fadeIn:     { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
-            slideUp:    { '0%': { opacity: 0, transform: 'translateY(16px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
-            slideRight: { '0%': { opacity: 0, transform: 'translateX(-12px)' }, '100%': { opacity: 1, transform: 'translateX(0)' } },
-            pulseSoft:  { '0%, 100%': { opacity: 1 }, '50%': { opacity: 0.7 } },
-            shimmer:    { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
-            countUp:    { '0%': { transform: 'scale(0.5)', opacity: 0 }, '50%': { transform: 'scale(1.15)' }, '100%': { transform: 'scale(1)', opacity: 1 } },
-          },
-        },
-      },
-    };
-  </script>
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css" />
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -58,83 +18,9 @@
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Inter', system-ui, sans-serif; }
-
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-    .glass {
-      background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(16px) saturate(180%);
-      -webkit-backdrop-filter: blur(16px) saturate(180%);
-      border: 1px solid rgba(148, 163, 184, 0.08);
-    }
-
-    .glass-light {
-      background: rgba(30, 41, 59, 0.55);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(148, 163, 184, 0.1);
-    }
-
-    .mesh-bg {
-      background:
-        radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.12) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 20%, rgba(168,85,247,0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.06) 0%, transparent 50%),
-        #020617;
-    }
-
-    .tab-btn { position: relative; transition: all 0.25s ease; }
-    .tab-btn::after {
-      content: ''; position: absolute; bottom: -1px; left: 50%;
-      transform: translateX(-50%) scaleX(0); width: 70%; height: 2px;
-      background: linear-gradient(90deg, #818cf8, #6366f1);
-      border-radius: 1px; transition: transform 0.25s ease;
-    }
-    .tab-btn.active { color: #a5b4fc; }
-    .tab-btn.active::after { transform: translateX(-50%) scaleX(1); }
-
-    .claim-card { transition: all 0.2s ease; cursor: pointer; }
-    .claim-card:hover { transform: translateX(4px); border-left-width: 4px; }
-    .claim-card.selected { border-left-width: 4px; background: rgba(99, 102, 241, 0.08); }
-    
-    .claim-card:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; }
-
-    .filter-pill { transition: all 0.2s ease; }
-    .filter-pill:hover { transform: translateY(-1px); }
-    .filter-pill.active { box-shadow: 0 0 0 1px rgba(99,102,241,0.4), 0 2px 8px rgba(99,102,241,0.15); }
-
-    .tab-content { display: none; }
-    .tab-content.active { display: block; animation: fadeIn 0.3s ease-out; }
-    .score-ring { transition: stroke-dashoffset 0.8s ease; }
-    .kpi-card { transition: all 0.3s ease; }
-    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-    
-    .evidence-claim { border-left: 3px solid #818cf8; }
-    .evidence-source { border-left: 3px solid #fbbf24; }
-
-    [data-tooltip] { position: relative; }
-    [data-tooltip]:hover::before {
-      content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%;
-      transform: translateX(-50%); padding: 4px 10px; background: #1e293b;
-      border: 1px solid rgba(148,163,184,0.15); border-radius: 6px;
-      font-size: 12px; color: #cbd5e1; white-space: nowrap; z-index: 50;
-      pointer-events: none; margin-bottom: 6px;
-    }
-
-    @media (max-width: 1024px) {
-      .split-pane { flex-direction: column !important; }
-      .split-pane > div { width: 100% !important; max-height: 50vh; }
-    }
-  </style>
 </head>
 
-<body class="mesh-bg min-h-screen text-slate-200 antialiased flex flex-col">
+<body class="min-h-screen antialiased flex flex-col">
 
   <!-- HEADER -->
   <header class="sticky top-0 z-50 glass border-b border-slate-800/50 shrink-0">
@@ -193,11 +79,9 @@
     </div>
 
     <!-- TAB 1: INSPECTOR -->
-    <div id="tab-inspector" class="tab-content active h-full flex flex-col">
-      <!-- Action Bar -->
+    <div id="tab-inspector" class="tab-content active h-full flex-col">
+      <!-- Action Bar (Top) -->
       <div class="glass rounded-2xl p-4 mb-4 shrink-0 animate-slide-up flex flex-col gap-4">
-        
-        <!-- Row 1: Load Demo & Upload -->
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div class="flex items-center gap-3 w-full sm:w-auto">
             <button id="btn-load-demo" class="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:translate-y-0">
@@ -211,14 +95,13 @@
               <input type="file" id="file-input" accept=".pdf,.txt,.text" class="hidden" />
             </label>
           </div>
-          
           <button id="btn-verify" disabled class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-500/10 transition-all disabled:shadow-none">
             <i data-lucide="search-check" class="w-4 h-4"></i>
             Verify Citations
           </button>
         </div>
 
-        <!-- Row 2: DOI/ArXiv Link Input -->
+        <!-- DOI/ArXiv Link Input -->
         <div class="flex flex-col sm:flex-row gap-3 pt-3 border-t border-slate-700/40">
           <div class="relative flex-1">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -236,64 +119,9 @@
             <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400"></i>
             <span class="text-slate-400">Loaded:</span>
             <span id="doc-title" class="text-slate-300 font-medium truncate"></span>
-            <button id="btn-clear-doc" class="ml-auto text-slate-500 hover:text-red-400 transition-colors" data-tooltip="Clear document">
+            <button id="btn-clear-doc" class="ml-auto text-slate-500 hover:text-rose-400 transition-colors" title="Clear document">
               <i data-lucide="x" class="w-3.5 h-3.5"></i>
             </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- KPI Scorecards -->
-      <div id="kpi-section" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 shrink-0">
-        <div class="kpi-card glass rounded-2xl p-4 border-l-4 border-emerald-500/60" id="kpi-card-supported">
-          <div class="flex items-center justify-between mb-2">
-            <div class="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-              <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
-            </div>
-            <span class="text-3xl font-bold text-emerald-400" id="count-supported">—</span>
-          </div>
-          <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Supported</p>
-          <div class="mt-2 h-1 rounded-full bg-slate-800 overflow-hidden">
-            <div id="bar-supported" class="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-700" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="kpi-card glass rounded-2xl p-4 border-l-4 border-amber-500/60" id="kpi-card-weak">
-          <div class="flex items-center justify-between mb-2">
-            <div class="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center">
-              <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-400"></i>
-            </div>
-            <span class="text-3xl font-bold text-amber-400" id="count-weak">—</span>
-          </div>
-          <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Weakly Supported</p>
-          <div class="mt-2 h-1 rounded-full bg-slate-800 overflow-hidden">
-            <div id="bar-weak" class="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-700" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="kpi-card glass rounded-2xl p-4 border-l-4 border-red-500/60" id="kpi-card-mismatched">
-          <div class="flex items-center justify-between mb-2">
-            <div class="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center">
-              <i data-lucide="x-circle" class="w-5 h-5 text-red-400"></i>
-            </div>
-            <span class="text-3xl font-bold text-red-400" id="count-mismatched">—</span>
-          </div>
-          <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Mismatched</p>
-          <div class="mt-2 h-1 rounded-full bg-slate-800 overflow-hidden">
-            <div id="bar-mismatched" class="h-full rounded-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-700" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="kpi-card glass rounded-2xl p-4 border-l-4 border-indigo-500/60" id="kpi-card-unverifiable">
-          <div class="flex items-center justify-between mb-2">
-            <div class="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-              <i data-lucide="help-circle" class="w-5 h-5 text-indigo-400"></i>
-            </div>
-            <span class="text-3xl font-bold text-indigo-400" id="count-unverifiable">—</span>
-          </div>
-          <p class="text-xs text-slate-400 font-medium uppercase tracking-wider">Unverifiable</p>
-          <div class="mt-2 h-1 rounded-full bg-slate-800 overflow-hidden">
-            <div id="bar-unverifiable" class="h-full rounded-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-700" style="width: 0%"></div>
           </div>
         </div>
       </div>
@@ -301,7 +129,7 @@
       <!-- Split-Screen Inspector -->
       <div class="split-pane flex gap-4 flex-1 min-h-[500px] overflow-hidden pb-4">
         
-        <!-- LEFT: Claims Panel (Now with Search + Filters integrated) -->
+        <!-- LEFT: Claims Panel (Search + Filters + List) -->
         <div class="w-1/2 glass rounded-2xl flex flex-col overflow-hidden" id="claims-panel">
           <div class="px-4 py-3 border-b border-slate-800/40 shrink-0">
             <div class="flex items-center gap-2 mb-3">
@@ -329,16 +157,16 @@
               <button class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-amber-950/40 text-amber-400 border border-amber-800/30" data-filter="Weakly Supported">
                 🟡 Weakly <span id="filter-count-weak" class="ml-1 text-amber-600"></span>
               </button>
-              <button class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-red-950/40 text-red-400 border border-red-800/30" data-filter="Mismatched">
-                🔴 Mismatched <span id="filter-count-mismatched" class="ml-1 text-red-600"></span>
+              <button class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-rose-950/40 text-rose-400 border border-rose-800/30" data-filter="Mismatched">
+                🔴 Mismatched <span id="filter-count-mismatched" class="ml-1 text-rose-600"></span>
               </button>
               <button class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/40 text-indigo-400 border border-indigo-800/30" data-filter="Unverifiable">
-                ⚪ Unverif <span id="filter-count-unverifiable" class="ml-1 text-indigo-600"></span>
+                ⚪ Unverifiable <span id="filter-count-unverifiable" class="ml-1 text-indigo-600"></span>
               </button>
             </div>
           </div>
 
-          <!-- Scrollable List -->
+          <!-- Scrollable Claims List -->
           <div id="claims-list" class="flex-1 overflow-y-auto p-3 space-y-3 relative" tabindex="0">
             <div id="claims-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
               <div class="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mb-4">
@@ -350,7 +178,7 @@
           </div>
         </div>
 
-        <!-- RIGHT: Evidence Comparison -->
+        <!-- RIGHT: Evidence Comparison Inspector -->
         <div class="w-1/2 glass rounded-2xl flex flex-col overflow-hidden" id="evidence-panel">
           <div class="px-4 py-3 border-b border-slate-800/40 flex items-center gap-2 shrink-0">
             <i data-lucide="git-compare" class="w-4 h-4 text-purple-400"></i>
@@ -370,47 +198,38 @@
     </div>
 
     <!-- TAB 2: BENCHMARK SUITE -->
-    <div id="tab-benchmark" class="tab-content h-full overflow-y-auto pb-6">
+    <div id="tab-benchmark" class="tab-content h-full flex-col overflow-y-auto pb-6">
       <div class="animate-slide-up">
-        <div class="glass rounded-2xl p-6 mb-6">
-          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-                <i data-lucide="flask-conical" class="w-5 h-5 text-purple-400"></i>
-                Evaluation &amp; Benchmark Suite
-              </h2>
-              <p class="text-sm text-slate-400 mt-1">Run the golden test suite against the CiteGuard AI verifier engine</p>
-            </div>
-            <button id="btn-run-benchmark" class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-purple-500/20 transition-all hover:-translate-y-0.5 active:translate-y-0">
-              <i data-lucide="play" class="w-4 h-4"></i>
-              Run Benchmark
-            </button>
+        <div class="glass rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+              <i data-lucide="flask-conical" class="w-5 h-5 text-purple-400"></i> Evaluation Suite
+            </h2>
+            <p class="text-sm text-slate-400 mt-1">Run the golden test suite against the CiteGuard AI verifier engine</p>
           </div>
+          <button id="btn-run-benchmark" class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl shadow-lg transition-all active:translate-y-0">
+            <i data-lucide="play" class="w-4 h-4"></i> Run Benchmark
+          </button>
         </div>
-
         <div id="benchmark-results" class="space-y-6">
           <div id="benchmark-empty" class="glass rounded-2xl p-12 text-center">
             <div class="w-20 h-20 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
               <i data-lucide="test-tubes" class="w-10 h-10 text-slate-600"></i>
             </div>
             <p class="text-slate-400 font-medium">No benchmark results yet</p>
-            <p class="text-xs text-slate-600 mt-1">Click "Run Benchmark" to evaluate the verifier</p>
           </div>
         </div>
       </div>
     </div>
 
     <!-- TAB 3: EXPORT REPORT -->
-    <div id="tab-export" class="tab-content h-full overflow-y-auto pb-6">
+    <div id="tab-export" class="tab-content h-full flex-col overflow-y-auto pb-6">
       <div class="animate-slide-up">
-        <div class="glass rounded-2xl p-6 mb-6 flex justify-between items-center">
-          <div>
-            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2 mb-1">
-              <i data-lucide="file-down" class="w-5 h-5 text-emerald-400"></i>
-              Export Audit Report
-            </h2>
-            <p class="text-sm text-slate-400">Download or copy the full citation verification audit in your preferred format.</p>
-          </div>
+        <div class="glass rounded-2xl p-6 mb-6">
+          <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2 mb-1">
+            <i data-lucide="file-down" class="w-5 h-5 text-emerald-400"></i> Export Audit Report
+          </h2>
+          <p class="text-sm text-slate-400">Download or copy the full citation verification audit.</p>
         </div>
 
         <div id="export-content">
@@ -423,49 +242,29 @@
           </div>
 
           <div id="export-options" class="hidden grid md:grid-cols-2 gap-4">
-            <!-- Download JSON button -->
+            <!-- JSON Export -->
             <div class="glass rounded-2xl p-6 hover:border-indigo-500/30 transition-all group cursor-pointer" id="btn-export-json">
               <div class="flex items-start gap-4">
                 <div class="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0 group-hover:bg-indigo-500/20 transition-colors">
                   <i data-lucide="braces" class="w-6 h-6 text-indigo-400"></i>
                 </div>
                 <div>
-                  <h3 class="text-base font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">Download JSON Audit (.json)</h3>
-                  <p class="text-sm text-slate-400 mt-1">Machine-readable structured data with full verification results and scores.</p>
+                  <h3 class="text-base font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">Download JSON Audit</h3>
+                  <p class="text-sm text-slate-400 mt-1">Machine-readable structured data format (.json).</p>
                 </div>
               </div>
             </div>
-
-            <!-- Download Markdown button -->
+            <!-- Markdown Export -->
             <div class="glass rounded-2xl p-6 hover:border-emerald-500/30 transition-all group cursor-pointer" id="btn-export-md">
               <div class="flex items-start gap-4">
                 <div class="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
                   <i data-lucide="file-text" class="w-6 h-6 text-emerald-400"></i>
                 </div>
                 <div>
-                  <h3 class="text-base font-semibold text-slate-200 group-hover:text-emerald-300 transition-colors">Download Markdown Audit (.md)</h3>
-                  <p class="text-sm text-slate-400 mt-1">Human-readable audit report beautifully formatted for documentation sharing.</p>
+                  <h3 class="text-base font-semibold text-slate-200 group-hover:text-emerald-300 transition-colors">Download Markdown Audit</h3>
+                  <p class="text-sm text-slate-400 mt-1">Human-readable report for documentation sharing (.md).</p>
                 </div>
               </div>
-            </div>
-          </div>
-          
-          <!-- Code Preview block -->
-          <div id="export-preview" class="hidden mt-6 glass rounded-2xl flex flex-col overflow-hidden max-h-[600px]">
-            <div class="px-4 py-3 border-b border-slate-800/40 flex items-center justify-between shrink-0 bg-slate-900/40">
-              <div class="flex items-center gap-2">
-                <i data-lucide="eye" class="w-4 h-4 text-slate-400"></i>
-                <span class="text-sm font-semibold text-slate-300">Report Preview</span>
-              </div>
-              <div class="flex items-center gap-3">
-                <span id="export-stats" class="text-xs text-slate-500 font-mono hidden sm:inline-block"></span>
-                <button id="btn-copy-export" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition-colors border border-slate-700">
-                  <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy to Clipboard
-                </button>
-              </div>
-            </div>
-            <div class="p-4 overflow-y-auto flex-1 bg-slate-950/50">
-              <pre id="export-preview-content" class="text-xs text-slate-400 font-mono whitespace-pre-wrap leading-relaxed select-all"></pre>
             </div>
           </div>
         </div>
