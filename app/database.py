@@ -12,6 +12,7 @@ import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from app.email_service import validate_email_deliverability
 
 DB_PATH = Path(__file__).resolve().parent.parent / "citeguard.db"
 
@@ -173,29 +174,31 @@ def check_availability(username: Optional[str] = None, email: Optional[str] = No
                     "available": False,
                     "message": "Email cannot be empty.",
                 }
-            elif not EMAIL_REGEX.match(clean_e):
-                result["email"] = {
-                    "checked": True,
-                    "valid": False,
-                    "available": False,
-                    "message": "Please provide a valid email address (e.g., researcher@university.edu).",
-                }
             else:
-                cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (clean_e,))
-                if cursor.fetchone():
+                is_valid_email, reason = validate_email_deliverability(clean_e)
+                if not is_valid_email:
                     result["email"] = {
                         "checked": True,
-                        "valid": True,
+                        "valid": False,
                         "available": False,
-                        "message": f"Email '{clean_e}' is already registered. Please sign in or use a different email.",
+                        "message": reason,
                     }
                 else:
-                    result["email"] = {
-                        "checked": True,
-                        "valid": True,
-                        "available": True,
-                        "message": f"Email '{clean_e}' is available.",
-                    }
+                    cursor.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(?)", (clean_e,))
+                    if cursor.fetchone():
+                        result["email"] = {
+                            "checked": True,
+                            "valid": True,
+                            "available": False,
+                            "message": f"Email '{clean_e}' is already registered. Please sign in or use a different email.",
+                        }
+                    else:
+                        result["email"] = {
+                            "checked": True,
+                            "valid": True,
+                            "available": True,
+                            "message": f"Email '{clean_e}' is valid and available.",
+                        }
 
     return result
 
@@ -214,11 +217,12 @@ def create_user(username: str, email: str, password: str) -> Dict[str, Any]:
     if not USERNAME_REGEX.match(clean_username):
         raise ValueError("Username must begin with a letter or number and contain only letters, numbers, underscores, or hyphens.")
 
-    if not EMAIL_REGEX.match(clean_email):
-        raise ValueError("Please provide a valid email address (e.g., researcher@university.edu).")
-
     if len(password) < 8:
         raise ValueError("Password must be at least 8 characters long for security.")
+
+    is_valid_email, email_reason = validate_email_deliverability(clean_email)
+    if not is_valid_email:
+        raise ValueError(email_reason)
 
     now_dt = datetime.now(timezone.utc)
     now_iso = now_dt.isoformat()
@@ -339,8 +343,12 @@ def verify_user_email(user_identifier: str, code: str) -> Tuple[bool, str, Optio
         }
 
 
-def resend_verification_code(user_identifier: str) -> Tuple[bool, str, Optional[str]]:
-    """Generate and return a new 6-digit verification code with renewed 15-minute expiry."""
+def resend_verification_code(user_identifier: str) -> Tuple[bool, str, Optional[str], Optional[Dict[str, Any]]]:
+    """Generate and return a new 6-digit verification code with renewed 15-minute expiry.
+
+    Returns:
+        Tuple of (success, message, verification_code, user_dict)
+    """
     clean_id = str(user_identifier).strip().lower()
 
     with get_connection() as conn:
@@ -355,10 +363,10 @@ def resend_verification_code(user_identifier: str) -> Tuple[bool, str, Optional[
         )
         row = cursor.fetchone()
         if not row:
-            return False, "User account not found.", None
+            return False, "User account not found.", None, None
 
         if row["is_verified"] == 1:
-            return False, "Email is already verified.", None
+            return False, "Email is already verified.", None, None
 
         new_code = f"{secrets.randbelow(900000) + 100000:06d}"
         new_expires = (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()
@@ -373,7 +381,12 @@ def resend_verification_code(user_identifier: str) -> Tuple[bool, str, Optional[
         )
         conn.commit()
 
-        return True, "A new 6-digit verification code has been generated.", new_code
+        user_info = {
+            "id": row["id"],
+            "username": row["username"],
+            "email": row["email"],
+        }
+        return True, "A new 6-digit verification code has been generated.", new_code, user_info
 
 
 def authenticate_user(username_or_email: str, password: str) -> Optional[Dict[str, Any]]:

@@ -45,6 +45,7 @@ from app.database import (
     verify_user_email,
     resend_verification_code,
 )
+from app.email_service import send_verification_email, is_smtp_configured
 
 app = FastAPI(
     title="CiteGuard AI",
@@ -153,18 +154,36 @@ def check_credential_availability(
     return check_availability(username=username, email=email)
 
 
+@app.get("/api/email-status")
+def email_status() -> Dict[str, Any]:
+    """Check whether SMTP is configured for live email delivery."""
+    configured = is_smtp_configured()
+    return {
+        "smtp_configured": configured,
+        "mode": "live" if configured else "demo",
+        "description": "Live emails are sent to recipient inboxes via SMTP." if configured else "SMTP is not configured yet; verification code is displayed on screen for testing.",
+    }
+
+
 @app.post("/api/register")
 def register(payload: RegisterRequest) -> Dict[str, Any]:
-    """Register a new user account and return an authentication token with email verification code."""
+    """Register a new user account, dispatch email verification OTP, and return session token."""
     try:
         user = create_user(payload.username, payload.email, payload.password)
         token = create_session(user["id"])
+        email_sent, email_msg = send_verification_email(
+            to_email=user["email"],
+            username=user["username"],
+            code=user["verification_code"],
+        )
         return {
             "success": True,
             "token": token,
             "user": user,
             "verification_code": user.get("verification_code"),
-            "message": "Account created successfully! Please enter your 6-digit verification code.",
+            "email_sent": email_sent,
+            "email_status": email_msg,
+            "message": f"Account created! {email_msg}",
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -204,7 +223,7 @@ def resend_verification(
     payload: ResendVerificationRequest,
     current_user: Optional[Dict[str, Any]] = Depends(get_optional_user),
 ) -> Dict[str, Any]:
-    """Generate and send a fresh 6-digit verification code."""
+    """Generate and dispatch a fresh 6-digit email verification code."""
     identifier = None
     if current_user:
         identifier = current_user.get("id")
@@ -217,14 +236,25 @@ def resend_verification(
             detail="User identifier (username or email) or active session is required to resend code.",
         )
 
-    success, message, code = resend_verification_code(str(identifier))
+    success, message, code, user_info = resend_verification_code(str(identifier))
     if not success:
         raise HTTPException(status_code=400, detail=message)
 
+    email_sent = False
+    email_msg = ""
+    if user_info and code:
+        email_sent, email_msg = send_verification_email(
+            to_email=user_info["email"],
+            username=user_info["username"],
+            code=code,
+        )
+
     return {
         "success": True,
-        "message": message,
+        "message": f"{message} {email_msg}".strip(),
         "verification_code": code,
+        "email_sent": email_sent,
+        "email_status": email_msg,
     }
 
 

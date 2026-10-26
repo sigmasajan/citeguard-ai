@@ -72,14 +72,16 @@ citeguard-ai/
 CiteGuard AI includes a built-in, zero-external-dependency authentication and security subsystem powered by SQLite and PBKDF2-HMAC-SHA256:
 
 * **Strict Credential Uniqueness**: Username and email address uniqueness is strictly enforced at both the application level and the database level with case-insensitive unique indexes (`LOWER(username)`, `LOWER(email)`).
-* **Format & Strength Validation**:
+* **Format & Deliverability Validation**:
   * Usernames must be 3–30 characters long, alphanumeric with hyphens and underscores (`^[a-zA-Z0-9][a-zA-Z0-9_-]{2,29}$`).
-  * Emails are validated against standard RFC specifications.
+  * Emails are validated against RFC syntax and verified for **active DNS deliverability** (`socket.getaddrinfo`), preventing invalid, misspelled, or fake domains (e.g. `@fake123xyz.com`) from registering.
   * Passwords enforce a minimum of 8 characters with a real-time 3-stage visual strength meter (Weak / Medium / Strong).
-* **Real-Time Availability Feedback**: Form inputs feature a 320ms debounced live availability check (`/api/check-availability`) providing instant validation indicators before form submission.
-* **Email Authentication & OTP Verification**:
+* **Real-Time Availability & Domain Feedback**: Form inputs feature a 320ms debounced live availability check (`/api/check-availability`) providing instant validation indicators for both username uniqueness and email domain validity before form submission.
+* **Email Authentication & Live OTP Dispatch**:
   * Each newly registered researcher account generates a cryptographically secure 6-digit OTP code (`secrets.randbelow(900000) + 100000`) with a 15-minute expiration timestamp.
-  * Interactive email verification step with dev auto-fill chip and a 30-second resend countdown timer.
+  * **Live SMTP Email Delivery**: When SMTP environment variables are configured (Gmail, SendGrid, Brevo, AWS SES, etc.), CiteGuard sends a rich, responsive HTML email directly to the user's inbox with the 6-digit verification code.
+  * **Interactive Demo Mode**: When running locally without SMTP credentials configured, CiteGuard runs gracefully in demo mode, displaying the code on screen with an instant "Auto Fill" chip so the app remains 100% testable out-of-the-box.
+  * 30-second countdown timer on the "Resend Code" button to prevent rate abuse.
   * Verified accounts display a green `Verified` badge in the header profile pill.
 * **Persistent Audit History**: Signed-in users have their past document inspections automatically saved to SQLite, accessible via the Sessions drawer and History tab.
 
@@ -100,6 +102,7 @@ CiteGuard AI includes a built-in, zero-external-dependency authentication and se
 ### Authentication & Account Security
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
+| `GET` | `/api/email-status` | Check whether SMTP is configured for live email delivery |
 | `GET` | `/api/check-availability` | Check username or email availability in real-time |
 | `POST` | `/api/register` | Register user account with PBKDF2 hash & generate 6-digit email OTP |
 | `POST` | `/api/login` | Authenticate credentials and return session bearer token |
@@ -133,11 +136,23 @@ pip install -r requirements.txt
 ```
 
 ### 4. Configure Environment Variables
-Create a `.env` file in the root directory and add your API key:
+Create a `.env` file from `.env.example`:
+```bash
+cp .env.example .env
+```
+Add your optional LLM API key and optional live SMTP configuration:
 ```env
-GEMINI_API_KEY=your_api_key_here
-# OR
-GROQ_API_KEY=your_api_key_here
+# Optional LLM Judge Keys
+GEMINI_API_KEY=your_gemini_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
+
+# Optional Live Email Dispatch (Gmail, SendGrid, Brevo, AWS SES)
+# If omitted, CiteGuard operates in Demo Mode displaying codes on-screen.
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_16_char_google_app_password
+SMTP_FROM=CiteGuard AI <your_email@gmail.com>
 ```
 
 ### 5. Run the Local Server

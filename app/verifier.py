@@ -10,7 +10,7 @@ Includes support for Google GenAI (gemini-2.5-flash / gemma-3-27b-it) and Groq (
 with a deterministic NLI heuristic fallback that runs offline with zero external dependencies.
 """
 
-from typing import Dict, Any, List, Set, Tuple
+from typing import Dict, Any, List, Set, Tuple, Optional
 import os
 import re
 import json

@@ -240,7 +240,7 @@ def test_user_registration_and_login():
     import secrets
     unique_suffix = secrets.token_hex(4)
     username = f"user_{unique_suffix}"
-    email = f"{username}@test.com"
+    email = f"{username}@mit.edu"
     password = "SecurePassword123"
 
     # Register

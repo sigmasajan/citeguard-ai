@@ -159,6 +159,10 @@ const dom = {
   // Email Verification Step Elements
   authVerificationStep: $('#auth-verification-step'),
   verifyTargetEmail: $('#verify-target-email'),
+  emailDispatchStatus: $('#email-dispatch-status'),
+  emailDispatchIcon: $('#email-dispatch-icon'),
+  emailDispatchTitle: $('#email-dispatch-title'),
+  emailDispatchDesc: $('#email-dispatch-desc'),
   demoVerificationBanner: $('#demo-verification-banner'),
   demoVerificationCode: $('#demo-verification-code'),
   btnAutofillDemoCode: $('#btn-autofill-demo-code'),
@@ -1755,7 +1759,7 @@ function togglePasswordVisibility() {
   }
 }
 
-function showVerificationStep(email, code) {
+function showVerificationStep(email, code, emailSent, emailStatus) {
   if (dom.authFormContainer) dom.authFormContainer.classList.add('hidden');
   if (dom.authVerificationStep) dom.authVerificationStep.classList.remove('hidden');
 
@@ -1765,6 +1769,27 @@ function showVerificationStep(email, code) {
   if (dom.authModalTitle) dom.authModalTitle.textContent = 'Verify Researcher Account';
   if (dom.authModalSubtitle) dom.authModalSubtitle.textContent = 'Secure your research integrity with email verification';
   if (dom.verifyTargetEmail) dom.verifyTargetEmail.textContent = state.pendingVerificationEmail || 'your email';
+
+  // Configure Email Dispatch Status Banner
+  if (dom.emailDispatchStatus) {
+    if (emailSent) {
+      dom.emailDispatchStatus.className = 'p-3 rounded-xl text-xs border flex items-start gap-2.5 bg-emerald-950/40 border-emerald-800/60 text-emerald-200';
+      if (dom.emailDispatchIcon) {
+        dom.emailDispatchIcon.setAttribute('data-lucide', 'mail-check');
+        dom.emailDispatchIcon.className = 'w-4 h-4 text-emerald-400 shrink-0 mt-0.5';
+      }
+      if (dom.emailDispatchTitle) dom.emailDispatchTitle.textContent = 'OTP Sent to Your Inbox!';
+      if (dom.emailDispatchDesc) dom.emailDispatchDesc.textContent = emailStatus || `A 6-digit verification code was emailed to ${state.pendingVerificationEmail}. Please check your inbox and spam folder.`;
+    } else {
+      dom.emailDispatchStatus.className = 'p-3 rounded-xl text-xs border flex items-start gap-2.5 bg-slate-900/90 border-slate-700/80 text-slate-300';
+      if (dom.emailDispatchIcon) {
+        dom.emailDispatchIcon.setAttribute('data-lucide', 'info');
+        dom.emailDispatchIcon.className = 'w-4 h-4 text-amber-400 shrink-0 mt-0.5';
+      }
+      if (dom.emailDispatchTitle) dom.emailDispatchTitle.textContent = 'Verification OTP Ready';
+      if (dom.emailDispatchDesc) dom.emailDispatchDesc.textContent = emailStatus || 'Enter your 6-digit verification code below to activate your account.';
+    }
+  }
 
   if (code) {
     if (dom.demoVerificationCode) dom.demoVerificationCode.textContent = code;
@@ -1867,7 +1892,22 @@ async function handleResendVerification() {
       if (dom.demoVerificationBanner) dom.demoVerificationBanner.classList.remove('hidden');
     }
 
-    showToast('New verification code generated and dispatched.', 'success');
+    if (dom.emailDispatchStatus) {
+      if (data.email_sent) {
+        dom.emailDispatchStatus.className = 'p-3 rounded-xl text-xs border flex items-start gap-2.5 bg-emerald-950/40 border-emerald-800/60 text-emerald-200';
+        if (dom.emailDispatchIcon) {
+          dom.emailDispatchIcon.setAttribute('data-lucide', 'mail-check');
+          dom.emailDispatchIcon.className = 'w-4 h-4 text-emerald-400 shrink-0 mt-0.5';
+        }
+        if (dom.emailDispatchTitle) dom.emailDispatchTitle.textContent = 'Fresh OTP Sent to Inbox!';
+        if (dom.emailDispatchDesc) dom.emailDispatchDesc.textContent = data.email_status || `A new verification code was emailed to ${state.pendingVerificationEmail}.`;
+      } else {
+        if (dom.emailDispatchDesc) dom.emailDispatchDesc.textContent = data.email_status || 'A new verification code was generated.';
+      }
+      initLucide();
+    }
+
+    showToast(data.email_sent ? 'Fresh verification OTP dispatched to your inbox!' : 'New verification code generated.', 'success');
 
     // Start 30s countdown on resend button
     let remaining = 30;
@@ -1943,8 +1983,8 @@ async function handleAuthSubmit(e) {
       loadHistory();
 
       // Smoothly transition into the Email Verification Step
-      showToast('Account created! Please enter your 6-digit verification code.', 'success');
-      showVerificationStep(data.user.email, data.verification_code);
+      showToast(data.email_sent ? 'Verification OTP dispatched to your email!' : 'Account created! Enter the 6-digit verification code.', 'success');
+      showVerificationStep(data.user.email, data.verification_code, data.email_sent, data.email_status);
     }
   } catch (err) {
     if (dom.authError && dom.authErrorText) {

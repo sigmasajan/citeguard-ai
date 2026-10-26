@@ -57,7 +57,7 @@ def test_unique_username_case_insensitive():
 def test_unique_email_case_insensitive():
     suffix = random_suffix()
     username = f"ProfBrown_{suffix}"
-    email = f"Brown_{suffix}@cambridge.edu"
+    email = f"Brown_{suffix}@harvard.edu"
 
     # First registration
     res = client.post(
@@ -89,7 +89,7 @@ def test_input_validation_rules():
     # Invalid username with spaces
     res = client.post(
         "/api/register",
-        json={"username": "invalid user", "email": f"u_{suffix}@test.com", "password": "SecurePassword123!"},
+        json={"username": "invalid user", "email": f"u_{suffix}@mit.edu", "password": "SecurePassword123!"},
     )
     assert res.status_code == 400
     assert "username must" in res.json()["detail"].lower()
@@ -97,7 +97,7 @@ def test_input_validation_rules():
     # Invalid username starting with symbol
     res = client.post(
         "/api/register",
-        json={"username": "-invalid", "email": f"u_{suffix}@test.com", "password": "SecurePassword123!"},
+        json={"username": "-invalid", "email": f"u_{suffix}@mit.edu", "password": "SecurePassword123!"},
     )
     assert res.status_code == 400
 
@@ -112,10 +112,37 @@ def test_input_validation_rules():
     # Short password (<8 chars)
     res = client.post(
         "/api/register",
-        json={"username": f"valid_{suffix}", "email": f"u_{suffix}@test.com", "password": "short"},
+        json={"username": f"valid_{suffix}", "email": f"u_{suffix}@mit.edu", "password": "short"},
     )
     assert res.status_code == 400
     assert "at least 8 characters" in res.json()["detail"].lower()
+
+
+def test_unresolvable_email_domain_rejected():
+    suffix = random_suffix()
+    fake_email = f"user_{suffix}@nonexistent-fake-domain-xyz987654321.org"
+
+    # Availability check should flag it
+    avail_res = client.get(f"/api/check-availability?email={fake_email}")
+    assert avail_res.status_code == 200
+    assert avail_res.json()["email"]["valid"] is False
+    assert "does not exist or has no active dns records" in avail_res.json()["email"]["message"].lower()
+
+    # Registration should be rejected with 400
+    reg_res = client.post(
+        "/api/register",
+        json={"username": f"Dr_{suffix}", "email": fake_email, "password": "SecurePassword123!"},
+    )
+    assert reg_res.status_code == 400
+    assert "does not exist or has no active dns records" in reg_res.json()["detail"].lower()
+
+
+def test_email_status_endpoint():
+    res = client.get("/api/email-status")
+    assert res.status_code == 200
+    data = res.json()
+    assert "smtp_configured" in data
+    assert "mode" in data
 
 
 def test_check_availability_endpoint():
