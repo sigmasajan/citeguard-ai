@@ -300,3 +300,18 @@ body {
     display: none; /* Keep mobile viewport clean and unobstructed */
   }
 }
+
+/* OTP Verification Input */
+#auth-verify-code {
+  letter-spacing: 0.45em;
+  text-indent: 0.25em;
+  transition: all 0.25s ease;
+}
+#auth-verify-code:focus {
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.35);
+}
+
+/* User Verified Badge Glow */
+#user-verified-badge {
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}

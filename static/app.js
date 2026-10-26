@@ -30,6 +30,11 @@ const state = {
   currentUser: null,
   authToken: localStorage.getItem('citeguard_token') || null,
   authMode: 'login', // 'login' | 'register'
+  pendingVerificationEmail: null,
+  pendingVerificationCode: null,
+  resendCountdown: 0,
+  resendTimerId: null,
+  availabilityDebounceTimer: null,
   history: [], // LocalStorage sessions
   sqliteHistory: [], // Server-side SQLite audits
   isPaletteOpen: false,
@@ -116,24 +121,56 @@ const dom = {
   userPill: $('#user-pill'),
   userAvatarInitial: $('#user-avatar-initial'),
   userDisplayName: $('#user-display-name'),
+  userVerifiedBadge: $('#user-verified-badge'),
+  userUnverifiedBadge: $('#user-unverified-badge'),
   btnLogout: $('#btn-logout'),
 
   authModal: $('#auth-modal'),
   btnCloseAuth: $('#btn-close-auth'),
   authModalTitle: $('#auth-modal-title'),
+  authModalSubtitle: $('#auth-modal-subtitle'),
   tabAuthLogin: $('#tab-auth-login'),
   tabAuthRegister: $('#tab-auth-register'),
+  authFormContainer: $('#auth-form-container'),
   authForm: $('#auth-form'),
   fieldUsernameGroup: $('#field-username-group'),
   labelUsername: $('#label-username'),
   authUsername: $('#auth-username'),
+  usernameAvailability: $('#username-availability'),
+  usernameSpinner: $('#username-spinner'),
+  usernameHint: $('#username-hint'),
   fieldEmailGroup: $('#field-email-group'),
   authEmail: $('#auth-email'),
+  emailAvailability: $('#email-availability'),
+  emailSpinner: $('#email-spinner'),
   authPassword: $('#auth-password'),
+  btnTogglePassword: $('#btn-toggle-password'),
+  iconTogglePassword: $('#icon-toggle-password'),
+  passwordStrengthBadge: $('#password-strength-badge'),
+  passwordMeter: $('#password-meter'),
+  meterBar1: $('#meter-bar-1'),
+  meterBar2: $('#meter-bar-2'),
+  meterBar3: $('#meter-bar-3'),
   authError: $('#auth-error'),
   authErrorText: $('#auth-error-text'),
   btnAuthSubmit: $('#btn-auth-submit'),
   authSubmitLabel: $('#auth-submit-label'),
+
+  // Email Verification Step Elements
+  authVerificationStep: $('#auth-verification-step'),
+  verifyTargetEmail: $('#verify-target-email'),
+  demoVerificationBanner: $('#demo-verification-banner'),
+  demoVerificationCode: $('#demo-verification-code'),
+  btnAutofillDemoCode: $('#btn-autofill-demo-code'),
+  verifyEmailForm: $('#verify-email-form'),
+  authVerifyCode: $('#auth-verify-code'),
+  verifyError: $('#verify-error'),
+  verifyErrorText: $('#verify-error-text'),
+  btnSubmitVerify: $('#btn-submit-verify'),
+  verifySubmitLabel: $('#verify-submit-label'),
+  btnResendCode: $('#btn-resend-code'),
+  resendLabel: $('#resend-label'),
+  btnSkipVerification: $('#btn-skip-verification'),
 
   // History Tab DOM Elements
   tabHistoryBadge: $('#tab-history-badge'),
@@ -248,13 +285,45 @@ function bindEvents() {
     });
   }
 
-  // Authentication Events
+  // Authentication & Verification Events
   if (dom.btnOpenAuth) dom.btnOpenAuth.addEventListener('click', () => openAuthModal('login'));
   if (dom.btnCloseAuth) dom.btnCloseAuth.addEventListener('click', closeAuthModal);
   if (dom.tabAuthLogin) dom.tabAuthLogin.addEventListener('click', () => setAuthMode('login'));
   if (dom.tabAuthRegister) dom.tabAuthRegister.addEventListener('click', () => setAuthMode('register'));
   if (dom.authForm) dom.authForm.addEventListener('submit', handleAuthSubmit);
   if (dom.btnLogout) dom.btnLogout.addEventListener('click', logout);
+  if (dom.userUnverifiedBadge) {
+    dom.userUnverifiedBadge.addEventListener('click', () => {
+      openAuthModal('register');
+      showVerificationStep(state.currentUser ? state.currentUser.email : '', state.pendingVerificationCode);
+    });
+  }
+
+  // Real-time Credential Validation & Password Events
+  if (dom.authUsername) {
+    dom.authUsername.addEventListener('input', () => {
+      if (state.authMode === 'register') debounceCheckAvailability('username', dom.authUsername.value);
+    });
+  }
+  if (dom.authEmail) {
+    dom.authEmail.addEventListener('input', () => {
+      if (state.authMode === 'register') debounceCheckAvailability('email', dom.authEmail.value);
+    });
+  }
+  if (dom.authPassword) {
+    dom.authPassword.addEventListener('input', () => {
+      if (state.authMode === 'register') evaluatePasswordStrength(dom.authPassword.value);
+    });
+  }
+  if (dom.btnTogglePassword) {
+    dom.btnTogglePassword.addEventListener('click', togglePasswordVisibility);
+  }
+
+  // Verification Step Events
+  if (dom.verifyEmailForm) dom.verifyEmailForm.addEventListener('submit', handleVerifyEmailSubmit);
+  if (dom.btnAutofillDemoCode) dom.btnAutofillDemoCode.addEventListener('click', handleAutofillCode);
+  if (dom.btnResendCode) dom.btnResendCode.addEventListener('click', handleResendVerification);
+  if (dom.btnSkipVerification) dom.btnSkipVerification.addEventListener('click', closeAuthModal);
 
   // History Tab Events
   if (dom.btnRefreshHistory) dom.btnRefreshHistory.addEventListener('click', loadHistory);
@@ -1482,6 +1551,25 @@ function renderAuthUI() {
     if (dom.userDisplayName) {
       dom.userDisplayName.textContent = state.currentUser.username;
     }
+    if (state.currentUser.is_verified) {
+      if (dom.userVerifiedBadge) {
+        dom.userVerifiedBadge.classList.remove('hidden');
+        dom.userVerifiedBadge.classList.add('flex');
+      }
+      if (dom.userUnverifiedBadge) {
+        dom.userUnverifiedBadge.classList.add('hidden');
+        dom.userUnverifiedBadge.classList.remove('flex');
+      }
+    } else {
+      if (dom.userVerifiedBadge) {
+        dom.userVerifiedBadge.classList.add('hidden');
+        dom.userVerifiedBadge.classList.remove('flex');
+      }
+      if (dom.userUnverifiedBadge) {
+        dom.userUnverifiedBadge.classList.remove('hidden');
+        dom.userUnverifiedBadge.classList.add('flex');
+      }
+    }
   } else {
     if (dom.btnOpenAuth) dom.btnOpenAuth.classList.remove('hidden');
     if (dom.userPill) {
@@ -1496,9 +1584,12 @@ function renderAuthUI() {
 }
 
 function openAuthModal(mode = 'login') {
+  if (dom.authFormContainer) dom.authFormContainer.classList.remove('hidden');
+  if (dom.authVerificationStep) dom.authVerificationStep.classList.add('hidden');
   setAuthMode(mode);
   if (dom.authError) dom.authError.classList.add('hidden');
   if (dom.authForm) dom.authForm.reset();
+  resetCredentialFeedback();
   if (dom.authModal) dom.authModal.classList.remove('hidden');
   setTimeout(() => {
     if (dom.authUsername) dom.authUsername.focus();
@@ -1507,11 +1598,38 @@ function openAuthModal(mode = 'login') {
 
 function closeAuthModal() {
   if (dom.authModal) dom.authModal.classList.add('hidden');
+  if (dom.authFormContainer) dom.authFormContainer.classList.remove('hidden');
+  if (dom.authVerificationStep) dom.authVerificationStep.classList.add('hidden');
+  resetCredentialFeedback();
+}
+
+function resetCredentialFeedback() {
+  if (dom.usernameAvailability) {
+    dom.usernameAvailability.className = 'hidden text-[11px] font-semibold items-center gap-1';
+    dom.usernameAvailability.innerHTML = '';
+  }
+  if (dom.emailAvailability) {
+    dom.emailAvailability.className = 'hidden text-[11px] font-semibold items-center gap-1';
+    dom.emailAvailability.innerHTML = '';
+  }
+  if (dom.usernameSpinner) dom.usernameSpinner.classList.add('hidden');
+  if (dom.emailSpinner) dom.emailSpinner.classList.add('hidden');
+  if (dom.passwordStrengthBadge) {
+    dom.passwordStrengthBadge.className = 'hidden text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded';
+    dom.passwordStrengthBadge.textContent = '';
+  }
+  if (dom.meterBar1) dom.meterBar1.className = 'h-full w-1/3 bg-slate-700 rounded-full transition-all';
+  if (dom.meterBar2) dom.meterBar2.className = 'h-full w-1/3 bg-slate-700 rounded-full transition-all';
+  if (dom.meterBar3) dom.meterBar3.className = 'h-full w-1/3 bg-slate-700 rounded-full transition-all';
 }
 
 function setAuthMode(mode) {
   state.authMode = mode;
   if (dom.authError) dom.authError.classList.add('hidden');
+  if (dom.authFormContainer) dom.authFormContainer.classList.remove('hidden');
+  if (dom.authVerificationStep) dom.authVerificationStep.classList.add('hidden');
+  resetCredentialFeedback();
+
   if (mode === 'login') {
     if (dom.tabAuthLogin) {
       dom.tabAuthLogin.className = 'flex-1 py-2 text-xs font-extrabold rounded-xl transition-all bg-indigo-600 text-white shadow-sm';
@@ -1521,9 +1639,12 @@ function setAuthMode(mode) {
     }
     if (dom.fieldEmailGroup) dom.fieldEmailGroup.classList.add('hidden');
     if (dom.authEmail) dom.authEmail.removeAttribute('required');
+    if (dom.usernameHint) dom.usernameHint.classList.add('hidden');
+    if (dom.passwordMeter) dom.passwordMeter.classList.add('hidden');
     if (dom.labelUsername) dom.labelUsername.textContent = 'Username or Email';
     if (dom.authUsername) dom.authUsername.placeholder = 'Enter username or email';
     if (dom.authModalTitle) dom.authModalTitle.textContent = 'Welcome Back';
+    if (dom.authModalSubtitle) dom.authModalSubtitle.textContent = 'Manage and sync your citation verification audits';
     if (dom.authSubmitLabel) dom.authSubmitLabel.textContent = 'Sign In';
   } else {
     if (dom.tabAuthRegister) {
@@ -1534,10 +1655,238 @@ function setAuthMode(mode) {
     }
     if (dom.fieldEmailGroup) dom.fieldEmailGroup.classList.remove('hidden');
     if (dom.authEmail) dom.authEmail.setAttribute('required', 'true');
-    if (dom.labelUsername) dom.labelUsername.textContent = 'Username';
+    if (dom.usernameHint) dom.usernameHint.classList.remove('hidden');
+    if (dom.passwordMeter) dom.passwordMeter.classList.remove('hidden');
+    if (dom.labelUsername) dom.labelUsername.textContent = 'Unique Username';
     if (dom.authUsername) dom.authUsername.placeholder = 'e.g. alex_researcher';
     if (dom.authModalTitle) dom.authModalTitle.textContent = 'Create CiteGuard Account';
-    if (dom.authSubmitLabel) dom.authSubmitLabel.textContent = 'Create Account';
+    if (dom.authModalSubtitle) dom.authModalSubtitle.textContent = 'Join researchers verifying scientific citations';
+    if (dom.authSubmitLabel) dom.authSubmitLabel.textContent = 'Create Account & Verify';
+  }
+  initLucide();
+}
+
+function debounceCheckAvailability(field, value) {
+  clearTimeout(state.availabilityDebounceTimer);
+  const cleanVal = (value || '').trim();
+  if (!cleanVal) {
+    if (field === 'username' && dom.usernameAvailability) {
+      dom.usernameAvailability.className = 'hidden text-[11px] font-semibold items-center gap-1';
+      dom.usernameAvailability.innerHTML = '';
+    }
+    if (field === 'email' && dom.emailAvailability) {
+      dom.emailAvailability.className = 'hidden text-[11px] font-semibold items-center gap-1';
+      dom.emailAvailability.innerHTML = '';
+    }
+    return;
+  }
+
+  const spinner = field === 'username' ? dom.usernameSpinner : dom.emailSpinner;
+  if (spinner) spinner.classList.remove('hidden');
+
+  state.availabilityDebounceTimer = setTimeout(async () => {
+    try {
+      const data = await apiFetch(`/api/check-availability?${field}=${encodeURIComponent(cleanVal)}`);
+      if (spinner) spinner.classList.add('hidden');
+      const target = field === 'username' ? dom.usernameAvailability : dom.emailAvailability;
+      const res = data[field];
+      if (!target || !res) return;
+
+      if (res.available && res.valid) {
+        target.className = 'flex text-[11px] font-semibold items-center gap-1 text-emerald-400';
+        target.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> <span>Available</span>`;
+      } else {
+        target.className = 'flex text-[11px] font-semibold items-center gap-1 text-rose-400';
+        target.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> <span>${escapeHtml(res.message)}</span>`;
+      }
+      initLucide();
+    } catch (e) {
+      if (spinner) spinner.classList.add('hidden');
+    }
+  }, 320);
+}
+
+function evaluatePasswordStrength(password) {
+  if (!password) {
+    resetCredentialFeedback();
+    return;
+  }
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[a-zA-Z]/.test(password) && /[0-9]/.test(password)) score++;
+  if (/[^a-zA-Z0-9]/.test(password) || (password.length >= 12 && /[A-Z]/.test(password))) score++;
+
+  if (dom.passwordStrengthBadge) dom.passwordStrengthBadge.classList.remove('hidden');
+
+  if (score === 1) {
+    if (dom.meterBar1) dom.meterBar1.className = 'h-full w-1/3 bg-rose-500 rounded-full transition-all';
+    if (dom.meterBar2) dom.meterBar2.className = 'h-full w-1/3 bg-slate-700 rounded-full transition-all';
+    if (dom.meterBar3) dom.meterBar3.className = 'h-full w-1/3 bg-slate-700 rounded-full transition-all';
+    if (dom.passwordStrengthBadge) {
+      dom.passwordStrengthBadge.className = 'text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40';
+      dom.passwordStrengthBadge.textContent = 'Weak';
+    }
+  } else if (score === 2) {
+    if (dom.meterBar1) dom.meterBar1.className = 'h-full w-1/3 bg-amber-500 rounded-full transition-all';
+    if (dom.meterBar2) dom.meterBar2.className = 'h-full w-1/3 bg-amber-500 rounded-full transition-all';
+    if (dom.meterBar3) dom.meterBar3.className = 'h-full w-1/3 bg-slate-700 rounded-full transition-all';
+    if (dom.passwordStrengthBadge) {
+      dom.passwordStrengthBadge.className = 'text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40';
+      dom.passwordStrengthBadge.textContent = 'Medium';
+    }
+  } else {
+    if (dom.meterBar1) dom.meterBar1.className = 'h-full w-1/3 bg-emerald-500 rounded-full transition-all';
+    if (dom.meterBar2) dom.meterBar2.className = 'h-full w-1/3 bg-emerald-500 rounded-full transition-all';
+    if (dom.meterBar3) dom.meterBar3.className = 'h-full w-1/3 bg-emerald-500 rounded-full transition-all';
+    if (dom.passwordStrengthBadge) {
+      dom.passwordStrengthBadge.className = 'text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+      dom.passwordStrengthBadge.textContent = 'Strong';
+    }
+  }
+}
+
+function togglePasswordVisibility() {
+  if (!dom.authPassword) return;
+  const isPass = dom.authPassword.type === 'password';
+  dom.authPassword.type = isPass ? 'text' : 'password';
+  if (dom.iconTogglePassword) {
+    dom.iconTogglePassword.setAttribute('data-lucide', isPass ? 'eye-off' : 'eye');
+    initLucide();
+  }
+}
+
+function showVerificationStep(email, code) {
+  if (dom.authFormContainer) dom.authFormContainer.classList.add('hidden');
+  if (dom.authVerificationStep) dom.authVerificationStep.classList.remove('hidden');
+
+  state.pendingVerificationEmail = email || (state.currentUser && state.currentUser.email) || '';
+  state.pendingVerificationCode = code || '';
+
+  if (dom.authModalTitle) dom.authModalTitle.textContent = 'Verify Researcher Account';
+  if (dom.authModalSubtitle) dom.authModalSubtitle.textContent = 'Secure your research integrity with email verification';
+  if (dom.verifyTargetEmail) dom.verifyTargetEmail.textContent = state.pendingVerificationEmail || 'your email';
+
+  if (code) {
+    if (dom.demoVerificationCode) dom.demoVerificationCode.textContent = code;
+    if (dom.demoVerificationBanner) dom.demoVerificationBanner.classList.remove('hidden');
+  } else {
+    if (dom.demoVerificationBanner) dom.demoVerificationBanner.classList.add('hidden');
+  }
+
+  if (dom.authVerifyCode) {
+    dom.authVerifyCode.value = '';
+    setTimeout(() => dom.authVerifyCode.focus(), 150);
+  }
+  if (dom.verifyError) dom.verifyError.classList.add('hidden');
+  initLucide();
+}
+
+function handleAutofillCode() {
+  if (!dom.authVerifyCode) return;
+  const code = state.pendingVerificationCode || (dom.demoVerificationCode ? dom.demoVerificationCode.textContent.trim() : '');
+  if (code && code !== '------') {
+    dom.authVerifyCode.value = code;
+    dom.authVerifyCode.classList.add('ring-2', 'ring-emerald-400');
+    setTimeout(() => dom.authVerifyCode.classList.remove('ring-2', 'ring-emerald-400'), 800);
+    showToast('Verification OTP filled!', 'info');
+  }
+}
+
+async function handleVerifyEmailSubmit(e) {
+  e.preventDefault();
+  if (dom.verifyError) dom.verifyError.classList.add('hidden');
+  const code = dom.authVerifyCode ? dom.authVerifyCode.value.trim() : '';
+
+  if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
+    if (dom.verifyError && dom.verifyErrorText) {
+      dom.verifyErrorText.textContent = 'Please enter a valid 6-digit numeric verification code.';
+      dom.verifyError.classList.remove('hidden');
+    }
+    return;
+  }
+
+  const submitBtn = dom.btnSubmitVerify;
+  const originalLabel = dom.verifySubmitLabel ? dom.verifySubmitLabel.textContent : 'Verify';
+  if (dom.verifySubmitLabel) dom.verifySubmitLabel.textContent = 'Activating…';
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    const data = await apiFetch('/api/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: code,
+        identifier: state.pendingVerificationEmail || (state.currentUser ? state.currentUser.email : null)
+      })
+    });
+
+    if (state.currentUser) {
+      state.currentUser.is_verified = true;
+    } else if (data.user) {
+      state.currentUser = data.user;
+    }
+
+    renderAuthUI();
+    closeAuthModal();
+    showToast('Researcher account verified successfully! Welcome to CiteGuard.', 'success');
+  } catch (err) {
+    if (dom.verifyError && dom.verifyErrorText) {
+      dom.verifyErrorText.textContent = err.message || 'Verification failed.';
+      dom.verifyError.classList.remove('hidden');
+    } else {
+      showToast(err.message, 'error');
+    }
+  } finally {
+    if (dom.verifySubmitLabel) dom.verifySubmitLabel.textContent = originalLabel;
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+async function handleResendVerification() {
+  const identifier = state.pendingVerificationEmail || (state.currentUser ? state.currentUser.email : null);
+  if (!identifier) {
+    showToast('No email available to resend verification code.', 'warn');
+    return;
+  }
+
+  const resendBtn = dom.btnResendCode;
+  const originalText = dom.resendLabel ? dom.resendLabel.textContent : 'Resend Code';
+  if (dom.resendLabel) dom.resendLabel.textContent = 'Generating…';
+  if (resendBtn) resendBtn.disabled = true;
+
+  try {
+    const data = await apiFetch('/api/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier })
+    });
+
+    if (data.verification_code) {
+      state.pendingVerificationCode = data.verification_code;
+      if (dom.demoVerificationCode) dom.demoVerificationCode.textContent = data.verification_code;
+      if (dom.demoVerificationBanner) dom.demoVerificationBanner.classList.remove('hidden');
+    }
+
+    showToast('New verification code generated and dispatched.', 'success');
+
+    // Start 30s countdown on resend button
+    let remaining = 30;
+    if (dom.resendLabel) dom.resendLabel.textContent = `Resend in ${remaining}s`;
+    clearInterval(state.resendTimerId);
+    state.resendTimerId = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        clearInterval(state.resendTimerId);
+        if (dom.resendLabel) dom.resendLabel.textContent = 'Resend Code';
+        if (resendBtn) resendBtn.disabled = false;
+      } else {
+        if (dom.resendLabel) dom.resendLabel.textContent = `Resend in ${remaining}s`;
+      }
+    }, 1000);
+  } catch (err) {
+    showToast(err.message || 'Failed to resend code.', 'error');
+    if (dom.resendLabel) dom.resendLabel.textContent = originalText;
+    if (resendBtn) resendBtn.disabled = false;
   }
 }
 
@@ -1562,6 +1911,20 @@ async function handleAuthSubmit(e) {
           password: dom.authPassword.value
         })
       });
+
+      state.authToken = data.token;
+      state.currentUser = data.user;
+      localStorage.setItem('citeguard_token', data.token);
+      renderAuthUI();
+      closeAuthModal();
+
+      if (data.user && !data.user.is_verified) {
+        showToast(`Welcome back, ${data.user.username}! Remember to verify your email.`, 'info');
+      } else {
+        showToast(`Welcome back, ${data.user.username}!`, 'success');
+      }
+
+      loadHistory();
     } else {
       data = await apiFetch('/api/register', {
         method: 'POST',
@@ -1572,16 +1935,17 @@ async function handleAuthSubmit(e) {
           password: dom.authPassword.value
         })
       });
+
+      state.authToken = data.token;
+      state.currentUser = data.user;
+      localStorage.setItem('citeguard_token', data.token);
+      renderAuthUI();
+      loadHistory();
+
+      // Smoothly transition into the Email Verification Step
+      showToast('Account created! Please enter your 6-digit verification code.', 'success');
+      showVerificationStep(data.user.email, data.verification_code);
     }
-
-    state.authToken = data.token;
-    state.currentUser = data.user;
-    localStorage.setItem('citeguard_token', data.token);
-    renderAuthUI();
-    closeAuthModal();
-    showToast(`Welcome, ${data.user.username}!`, 'success');
-
-    loadHistory();
   } catch (err) {
     if (dom.authError && dom.authErrorText) {
       dom.authErrorText.textContent = err.message || 'Authentication failed.';
@@ -1603,6 +1967,8 @@ async function logout() {
   }
   state.authToken = null;
   state.currentUser = null;
+  state.pendingVerificationCode = null;
+  state.pendingVerificationEmail = null;
   state.sqliteHistory = [];
   localStorage.removeItem('citeguard_token');
   renderAuthUI();
@@ -1874,18 +2240,47 @@ References:
           total_cases: 10,
           correct_predictions: 9
         });
-      } else if (url === '/api/login' || url === '/api/register') {
+      } else if (url.startsWith('/api/check-availability')) {
+        resolve({
+          username: { checked: true, valid: true, available: true, message: 'Username is available.' },
+          email: { checked: true, valid: true, available: true, message: 'Email is available.' }
+        });
+      } else if (url === '/api/register') {
         const payload = options.body ? JSON.parse(options.body) : {};
-        const username = payload.username || (payload.username_or_email ? payload.username_or_email.split('@')[0] : 'researcher');
+        const username = payload.username || 'researcher';
+        const email = payload.email || `${username}@university.edu`;
         resolve({
           success: true,
           token: 'demo-session-token-' + Date.now(),
-          user: { id: 1, username: username, email: payload.email || `${username}@university.edu` },
+          user: { id: 1, username: username, email: email, is_verified: false },
+          verification_code: '849201',
+          message: 'Account created (Demo mode). Verification code: 849201'
+        });
+      } else if (url === '/api/login') {
+        const payload = options.body ? JSON.parse(options.body) : {};
+        const username = (payload.username_or_email ? payload.username_or_email.split('@')[0] : 'researcher');
+        resolve({
+          success: true,
+          token: 'demo-session-token-' + Date.now(),
+          user: { id: 1, username: username, email: `${username}@university.edu`, is_verified: true },
           message: 'Success (Demo mode)'
+        });
+      } else if (url === '/api/verify-email') {
+        const updatedUser = state.currentUser ? { ...state.currentUser, is_verified: true } : { id: 1, username: 'researcher', is_verified: true };
+        resolve({
+          success: true,
+          message: 'Email successfully verified (Demo mode).',
+          user: updatedUser
+        });
+      } else if (url === '/api/resend-verification') {
+        resolve({
+          success: true,
+          message: 'A new verification code has been dispatched.',
+          verification_code: '582914'
         });
       } else if (url === '/api/me') {
         resolve({
-          user: state.currentUser || { id: 1, username: 'demo_researcher', email: 'researcher@citeguard.ai' }
+          user: state.currentUser || { id: 1, username: 'demo_researcher', email: 'researcher@citeguard.ai', is_verified: true }
         });
       } else if (url === '/api/history') {
         resolve({

@@ -41,6 +41,9 @@ from app.database import (
     get_user_analyses,
     get_analysis_by_id,
     delete_analysis,
+    check_availability,
+    verify_user_email,
+    resend_verification_code,
 )
 
 app = FastAPI(
@@ -107,6 +110,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class VerifyEmailRequest(BaseModel):
+    code: str = Field(..., min_length=6, max_length=6, description="6-digit email verification code.")
+    identifier: Optional[str] = Field(default=None, description="Username or email if not logged in.")
+
+
+class ResendVerificationRequest(BaseModel):
+    identifier: Optional[str] = Field(default=None, description="Username or email if not logged in.")
+
+
 class UrlFetchRequest(BaseModel):
     url: str
 
@@ -132,9 +144,18 @@ def get_optional_user(authorization: Optional[str] = Header(None)) -> Optional[D
 
 # --- Auth Endpoints ---
 
+@app.get("/api/check-availability")
+def check_credential_availability(
+    username: Optional[str] = None,
+    email: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Check whether a username or email is valid and available in real-time."""
+    return check_availability(username=username, email=email)
+
+
 @app.post("/api/register")
 def register(payload: RegisterRequest) -> Dict[str, Any]:
-    """Register a new user account and return an authentication token."""
+    """Register a new user account and return an authentication token with email verification code."""
     try:
         user = create_user(payload.username, payload.email, payload.password)
         token = create_session(user["id"])
@@ -142,10 +163,69 @@ def register(payload: RegisterRequest) -> Dict[str, Any]:
             "success": True,
             "token": token,
             "user": user,
-            "message": "Account created successfully.",
+            "verification_code": user.get("verification_code"),
+            "message": "Account created successfully! Please enter your 6-digit verification code.",
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/api/verify-email")
+def verify_email(
+    payload: VerifyEmailRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+) -> Dict[str, Any]:
+    """Verify email address with 6-digit verification code."""
+    identifier = None
+    if current_user:
+        identifier = current_user.get("id")
+    elif payload.identifier:
+        identifier = payload.identifier.strip()
+
+    if not identifier:
+        raise HTTPException(
+            status_code=400,
+            detail="User identifier (username or email) or active session is required to verify email.",
+        )
+
+    success, message, user = verify_user_email(str(identifier), payload.code)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+
+    return {
+        "success": True,
+        "message": message,
+        "user": user,
+    }
+
+
+@app.post("/api/resend-verification")
+def resend_verification(
+    payload: ResendVerificationRequest,
+    current_user: Optional[Dict[str, Any]] = Depends(get_optional_user),
+) -> Dict[str, Any]:
+    """Generate and send a fresh 6-digit verification code."""
+    identifier = None
+    if current_user:
+        identifier = current_user.get("id")
+    elif payload.identifier:
+        identifier = payload.identifier.strip()
+
+    if not identifier:
+        raise HTTPException(
+            status_code=400,
+            detail="User identifier (username or email) or active session is required to resend code.",
+        )
+
+    success, message, code = resend_verification_code(str(identifier))
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+
+    return {
+        "success": True,
+        "message": message,
+        "verification_code": code,
+    }
 
 
 @app.post("/api/login")

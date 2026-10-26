@@ -76,8 +76,18 @@
               <div class="w-6 h-6 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-[11px] font-extrabold text-white shadow-sm ring-1 ring-white/20">
                 <span id="user-avatar-initial">U</span>
               </div>
-              <span id="user-display-name" class="text-xs font-bold text-slate-200 max-w-[100px] truncate">User</span>
-              <button id="btn-logout" class="p-1 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors" title="Sign Out">
+              <div class="flex items-center gap-1.5">
+                <span id="user-display-name" class="text-xs font-bold text-slate-200 max-w-[90px] sm:max-w-[110px] truncate">User</span>
+                <span id="user-verified-badge" class="hidden items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/40 text-[10px] font-extrabold text-emerald-400" title="Verified Researcher Account">
+                  <i data-lucide="badge-check" class="w-3 h-3 text-emerald-400"></i>
+                  <span class="hidden sm:inline">Verified</span>
+                </span>
+                <button id="user-unverified-badge" type="button" class="hidden items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/40 text-[10px] font-bold text-amber-400 hover:bg-amber-500/25 transition-colors cursor-pointer" title="Email not verified - Click to verify">
+                  <i data-lucide="shield-alert" class="w-3 h-3 text-amber-400"></i>
+                  <span class="hidden sm:inline">Verify</span>
+                </button>
+              </div>
+              <button id="btn-logout" class="p-1 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors ml-0.5" title="Sign Out">
                 <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
               </button>
             </div>
@@ -626,9 +636,9 @@
   <!-- TOAST CONTAINER -->
   <div id="toast-container" class="fixed bottom-20 right-5 z-[300] flex flex-col gap-2.5"></div>
 
-  <!-- ═══════════════════ AUTH MODAL (LOGIN & REGISTER) ═══════════════════ -->
+  <!-- ═══════════════════ AUTH MODAL (LOGIN, REGISTER & EMAIL VERIFICATION) ═══════════════════ -->
   <div id="auth-modal" class="hidden fixed inset-0 z-[250] flex items-center justify-center px-4 bg-slate-950/80 backdrop-blur-md">
-    <div class="relative w-full max-w-md glass rounded-3xl border border-indigo-500/40 p-6 sm:p-8 animate-scale-in shadow-2xl bg-slate-900/95">
+    <div class="relative w-full max-w-md glass rounded-3xl border border-indigo-500/40 p-6 sm:p-8 animate-scale-in shadow-2xl bg-slate-900/95 max-h-[92vh] overflow-y-auto">
       <button id="btn-close-auth" class="absolute top-5 right-5 text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800/60 transition-colors">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
@@ -639,60 +649,150 @@
         </div>
         <div>
           <h3 id="auth-modal-title" class="text-lg font-extrabold text-white">Welcome Back</h3>
-          <p class="text-xs text-slate-400">Manage and sync your citation verification audits</p>
+          <p id="auth-modal-subtitle" class="text-xs text-slate-400">Manage and sync your citation verification audits</p>
         </div>
       </div>
 
-      <!-- Switch Tabs: Sign In / Create Account -->
-      <div class="flex bg-slate-950/70 p-1 rounded-2xl mb-5 border border-slate-800">
-        <button id="tab-auth-login" type="button" class="flex-1 py-2 text-xs font-extrabold rounded-xl transition-all bg-indigo-600 text-white shadow-sm">
-          Sign In
-        </button>
-        <button id="tab-auth-register" type="button" class="flex-1 py-2 text-xs font-extrabold rounded-xl transition-all text-slate-400 hover:text-slate-200">
-          Create Account
-        </button>
+      <!-- MAIN CREDENTIALS FORM CONTAINER -->
+      <div id="auth-form-container">
+        <!-- Switch Tabs: Sign In / Create Account -->
+        <div class="flex bg-slate-950/70 p-1 rounded-2xl mb-5 border border-slate-800">
+          <button id="tab-auth-login" type="button" class="flex-1 py-2 text-xs font-extrabold rounded-xl transition-all bg-indigo-600 text-white shadow-sm">
+            Sign In
+          </button>
+          <button id="tab-auth-register" type="button" class="flex-1 py-2 text-xs font-extrabold rounded-xl transition-all text-slate-400 hover:text-slate-200">
+            Create Account
+          </button>
+        </div>
+
+        <form id="auth-form" class="space-y-4">
+          <div id="field-username-group">
+            <div class="flex items-center justify-between mb-1.5">
+              <label id="label-username" class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Username or Email</label>
+              <div id="username-availability" class="hidden text-[11px] font-semibold items-center gap-1"></div>
+            </div>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <i data-lucide="user" class="w-4 h-4"></i>
+              </div>
+              <input type="text" id="auth-username" required class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-10 pr-9 py-2.5 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="Enter username or email" autocomplete="username" />
+              <div id="username-spinner" class="hidden absolute inset-y-0 right-0 pr-3 items-center">
+                <i data-lucide="loader-2" class="w-4 h-4 text-indigo-400 animate-spin"></i>
+              </div>
+            </div>
+            <p id="username-hint" class="hidden text-[11px] text-slate-400 mt-1">3-30 chars: letters, numbers, hyphens, underscores</p>
+          </div>
+
+          <div id="field-email-group" class="hidden">
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Email Address</label>
+              <div id="email-availability" class="hidden text-[11px] font-semibold items-center gap-1"></div>
+            </div>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <i data-lucide="mail" class="w-4 h-4"></i>
+              </div>
+              <input type="email" id="auth-email" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-10 pr-9 py-2.5 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="researcher@university.edu" autocomplete="email" />
+              <div id="email-spinner" class="hidden absolute inset-y-0 right-0 pr-3 items-center">
+                <i data-lucide="loader-2" class="w-4 h-4 text-indigo-400 animate-spin"></i>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Requires 6-digit authentication code verification.</p>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Password</label>
+              <div id="password-strength-badge" class="hidden text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded"></div>
+            </div>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <i data-lucide="lock" class="w-4 h-4"></i>
+              </div>
+              <input type="password" id="auth-password" required minlength="8" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="••••••••" autocomplete="current-password" />
+              <button type="button" id="btn-toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 cursor-pointer" title="Toggle password visibility">
+                <i id="icon-toggle-password" data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </div>
+            <!-- Password Strength Bar (active during registration) -->
+            <div id="password-meter" class="hidden mt-2 space-y-1">
+              <div class="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden flex gap-1">
+                <div id="meter-bar-1" class="h-full w-1/3 bg-slate-700 rounded-full transition-all"></div>
+                <div id="meter-bar-2" class="h-full w-1/3 bg-slate-700 rounded-full transition-all"></div>
+                <div id="meter-bar-3" class="h-full w-1/3 bg-slate-700 rounded-full transition-all"></div>
+              </div>
+              <p id="password-hint" class="text-[11px] text-slate-400">At least 8 characters (letters, numbers, and symbols recommended).</p>
+            </div>
+          </div>
+
+          <div id="auth-error" class="hidden p-3 bg-rose-950/70 border border-rose-800/80 rounded-xl text-xs text-rose-300 flex items-center gap-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400 shrink-0"></i>
+            <span id="auth-error-text">Authentication error</span>
+          </div>
+
+          <button type="submit" id="btn-auth-submit" class="w-full py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:from-indigo-500 hover:to-purple-500 text-white text-xs sm:text-sm font-extrabold rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer">
+            <span id="auth-submit-label">Sign In</span>
+          </button>
+        </form>
       </div>
 
-      <form id="auth-form" class="space-y-4">
-        <div id="field-username-group">
-          <label id="label-username" class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Username or Email</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-              <i data-lucide="user" class="w-4 h-4"></i>
-            </div>
-            <input type="text" id="auth-username" required class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="Enter username or email" />
+      <!-- ══════════════ EMAIL VERIFICATION STEP ══════════════ -->
+      <div id="auth-verification-step" class="hidden space-y-5">
+        <div class="text-center space-y-2">
+          <div class="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/10">
+            <i data-lucide="shield-check" class="w-7 h-7 text-indigo-400"></i>
           </div>
+          <h4 class="text-base font-extrabold text-white">Email Authentication</h4>
+          <p class="text-xs text-slate-400 max-w-xs mx-auto">
+            A 6-digit verification code has been generated for
+            <span id="verify-target-email" class="font-bold text-indigo-300">your email</span>.
+          </p>
         </div>
 
-        <div id="field-email-group" class="hidden">
-          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Email Address</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-              <i data-lucide="mail" class="w-4 h-4"></i>
+        <!-- Development Quick Helper Banner -->
+        <div id="demo-verification-banner" class="p-3 bg-indigo-950/50 border border-indigo-800/60 rounded-xl text-xs text-indigo-200 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="key" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+            <div>
+              <span class="text-[10px] uppercase font-bold text-indigo-400 block tracking-wider">Verification OTP</span>
+              <span class="font-mono font-extrabold tracking-widest text-white text-sm" id="demo-verification-code">------</span>
             </div>
-            <input type="email" id="auth-email" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="researcher@university.edu" />
           </div>
+          <button type="button" id="btn-autofill-demo-code" class="px-2.5 py-1 rounded-lg bg-indigo-600/40 hover:bg-indigo-600 text-indigo-200 hover:text-white text-[11px] font-bold transition-all border border-indigo-500/40 cursor-pointer">
+            Auto Fill
+          </button>
         </div>
 
-        <div>
-          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">Password</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-              <i data-lucide="lock" class="w-4 h-4"></i>
+        <form id="verify-email-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 text-center">Enter 6-Digit Code</label>
+            <div class="flex justify-center">
+              <input type="text" id="auth-verify-code" maxlength="6" inputmode="numeric" pattern="[0-9]*" class="w-56 text-center tracking-[0.5em] text-2xl font-mono font-bold bg-slate-950/90 border border-indigo-500/50 rounded-2xl py-3 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/30 transition-all shadow-inner" placeholder="000000" autocomplete="one-time-code" />
             </div>
-            <input type="password" id="auth-password" required minlength="6" class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-10 pr-3.5 py-2.5 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="••••••••" />
+            <p class="text-center text-[11px] text-slate-500 mt-1.5">Code valid for 15 minutes</p>
           </div>
-        </div>
 
-        <div id="auth-error" class="hidden p-3 bg-rose-950/70 border border-rose-800/80 rounded-xl text-xs text-rose-300 flex items-center gap-2">
-          <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400 shrink-0"></i>
-          <span id="auth-error-text">Authentication error</span>
-        </div>
+          <div id="verify-error" class="hidden p-3 bg-rose-950/70 border border-rose-800/80 rounded-xl text-xs text-rose-300 flex items-center gap-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400 shrink-0"></i>
+            <span id="verify-error-text">Verification failed.</span>
+          </div>
 
-        <button type="submit" id="btn-auth-submit" class="w-full py-3 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:from-indigo-500 hover:to-purple-500 text-white text-xs sm:text-sm font-extrabold rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2">
-          <span id="auth-submit-label">Sign In</span>
-        </button>
-      </form>
+          <button type="submit" id="btn-submit-verify" class="w-full py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-extrabold rounded-xl shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer">
+            <i data-lucide="badge-check" class="w-4 h-4"></i>
+            <span id="verify-submit-label">Verify & Activate Account</span>
+          </button>
+        </form>
+
+        <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+          <button type="button" id="btn-resend-code" class="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span id="resend-label">Resend Code</span>
+          </button>
+          <button type="button" id="btn-skip-verification" class="text-slate-400 hover:text-slate-200 transition-colors cursor-pointer">
+            Skip for now
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
