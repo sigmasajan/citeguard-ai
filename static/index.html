@@ -156,6 +156,9 @@
           <button class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 flex items-center gap-2" data-tab="inspector">
             <i data-lucide="scan-search" class="w-4 h-4"></i> Inspector
           </button>
+          <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 flex items-center gap-2" data-tab="history" id="tab-btn-history">
+            <i data-lucide="history" class="w-4 h-4"></i> History
+          </button>
           <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 flex items-center gap-2" data-tab="benchmark">
             <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Benchmark
           </button>
@@ -164,13 +167,35 @@
           </button>
         </nav>
 
-        <div class="hidden sm:flex items-center gap-3 text-xs text-slate-500">
-          <div id="mock-badge" class="hidden px-2 py-0.5 bg-amber-950/50 text-amber-400 border border-amber-800/50 rounded-md font-medium flex items-center gap-1">
-            <i data-lucide="wifi-off" class="w-3 h-3"></i> Mock Mode
+        <div class="flex items-center gap-3">
+          <!-- Auth Section -->
+          <div id="auth-nav-container" class="flex items-center gap-2">
+            <button id="btn-open-auth" class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold transition-all">
+              <i data-lucide="user" class="w-3.5 h-3.5"></i>
+              <span>Sign In</span>
+            </button>
+
+            <div id="user-pill" class="hidden items-center gap-2">
+              <div class="flex items-center gap-2 px-3 py-1 glass-light rounded-xl border border-slate-700/60">
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                  <span id="user-avatar-initial">U</span>
+                </div>
+                <span id="user-display-name" class="text-xs font-medium text-slate-200 max-w-[110px] truncate">User</span>
+              </div>
+              <button id="btn-logout" class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800/60 rounded-xl transition-colors" data-tooltip="Sign Out" title="Sign Out">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <span id="api-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-soft"></span>
-            <span id="api-status">Connecting...</span>
+
+          <div class="hidden md:flex items-center gap-3 text-xs text-slate-500 border-l border-slate-800/60 pl-3">
+            <div id="mock-badge" class="hidden px-2 py-0.5 bg-amber-950/50 text-amber-400 border border-amber-800/50 rounded-md font-medium flex items-center gap-1">
+              <i data-lucide="wifi-off" class="w-3 h-3"></i> Mock Mode
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="api-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-soft"></span>
+              <span id="api-status">Connecting...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -471,7 +496,123 @@
         </div>
       </div>
     </div>
+
+    <!-- TAB 4: HISTORY / PREVIOUS ANALYSES -->
+    <div id="tab-history" class="tab-content h-full overflow-y-auto pb-6">
+      <div class="animate-slide-up">
+        <div class="glass rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+              <i data-lucide="history" class="w-5 h-5 text-indigo-400"></i>
+              My Analysis History
+            </h2>
+            <p class="text-sm text-slate-400 mt-1">Review past verification runs and instantly re-load reports into the Inspector</p>
+          </div>
+          <button id="btn-refresh-history" class="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors shadow-sm">
+            <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Refresh History
+          </button>
+        </div>
+
+        <div id="history-container">
+          <!-- State 1: Logged Out -->
+          <div id="history-logged-out" class="glass rounded-2xl p-12 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
+              <i data-lucide="lock" class="w-8 h-8 text-indigo-400"></i>
+            </div>
+            <h3 class="text-base font-semibold text-slate-200">Sign in to Access Your History</h3>
+            <p class="text-xs text-slate-400 mt-1.5 max-w-sm mx-auto">Create a free account or sign in to automatically store your verification reports and review them anytime.</p>
+            <button id="btn-history-signin" class="mt-5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-500/20 transition-all inline-flex items-center gap-2">
+              <i data-lucide="user" class="w-4 h-4"></i> Sign In / Register
+            </button>
+          </div>
+
+          <!-- State 2: Logged In but No Analyses -->
+          <div id="history-empty" class="hidden glass rounded-2xl p-12 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
+              <i data-lucide="inbox" class="w-8 h-8 text-slate-600"></i>
+            </div>
+            <h3 class="text-base font-semibold text-slate-300">No previous analyses found</h3>
+            <p class="text-xs text-slate-500 mt-1.5 max-w-sm mx-auto">Verify citations on any paper in the Inspector tab, and your results will be automatically archived here.</p>
+          </div>
+
+          <!-- State 3: History List Cards Grid -->
+          <div id="history-list" class="hidden grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Dynamically populated analysis cards -->
+          </div>
+        </div>
+      </div>
+    </div>
   </main>
+
+  <!-- AUTH MODAL -->
+  <div id="auth-modal" class="hidden fixed inset-0 z-[150] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass max-w-md w-full rounded-2xl p-6 sm:p-8 border border-slate-700/60 shadow-2xl animate-slide-up relative">
+      <button id="btn-close-auth" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800/50 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+          <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-slate-100" id="auth-modal-title">Welcome to CiteGuard</h3>
+          <p class="text-xs text-slate-400">Save and track all your citation verification audits</p>
+        </div>
+      </div>
+
+      <!-- Tabs: Sign In / Register -->
+      <div class="flex bg-slate-900/60 p-1 rounded-xl mb-5 border border-slate-800/60">
+        <button id="tab-auth-login" class="flex-1 py-2 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-sm">
+          Sign In
+        </button>
+        <button id="tab-auth-register" class="flex-1 py-2 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-slate-200">
+          Create Account
+        </button>
+      </div>
+
+      <form id="auth-form" class="space-y-4">
+        <div id="field-username-group">
+          <label class="block text-xs font-medium text-slate-300 mb-1" id="label-username">Username or Email</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+              <i data-lucide="user" class="w-4 h-4"></i>
+            </div>
+            <input type="text" id="auth-username" required class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="Enter username or email" />
+          </div>
+        </div>
+
+        <div id="field-email-group" class="hidden">
+          <label class="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+              <i data-lucide="mail" class="w-4 h-4"></i>
+            </div>
+            <input type="email" id="auth-email" class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="name@domain.com" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+              <i data-lucide="lock" class="w-4 h-4"></i>
+            </div>
+            <input type="password" id="auth-password" required minlength="6" class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="••••••••" />
+          </div>
+        </div>
+
+        <div id="auth-error" class="hidden p-3 bg-red-950/50 border border-red-800/60 rounded-xl text-xs text-red-300 flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 text-red-400 shrink-0"></i>
+          <span id="auth-error-text">Authentication error</span>
+        </div>
+
+        <button type="submit" id="btn-auth-submit" class="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2">
+          <span id="auth-submit-label">Sign In</span>
+        </button>
+      </form>
+    </div>
+  </div>
 
   <div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2"></div>
 

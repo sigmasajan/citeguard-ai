@@ -231,3 +231,126 @@ def test_pdf_extraction_endpoint():
     assert resp.status_code == 200
     assert "document_text" in resp.json()
     assert "Attention Is All You Need" in resp.json()["document_text"]
+
+
+# --- 8. Test Authentication (Register, Login, Me, Logout) ---
+
+def test_user_registration_and_login():
+    """Verify user registration, login, profile check, and logout lifecycle."""
+    import secrets
+    unique_suffix = secrets.token_hex(4)
+    username = f"user_{unique_suffix}"
+    email = f"{username}@test.com"
+    password = "SecurePassword123"
+
+    # Register
+    reg_resp = client.post(
+        "/api/register",
+        json={"username": username, "email": email, "password": password},
+    )
+    assert reg_resp.status_code == 200
+    reg_data = reg_resp.json()
+    assert reg_data["success"] is True
+    assert "token" in reg_data
+    token = reg_data["token"]
+
+    # Check profile
+    me_resp = client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_resp.status_code == 200
+    assert me_resp.json()["user"]["username"] == username
+
+    # Duplicate registration should be rejected
+    dup_resp = client.post(
+        "/api/register",
+        json={"username": username, "email": email, "password": password},
+    )
+    assert dup_resp.status_code == 400
+
+    # Login
+    login_resp = client.post(
+        "/api/login",
+        json={"username_or_email": username, "password": password},
+    )
+    assert login_resp.status_code == 200
+    login_token = login_resp.json()["token"]
+
+    # Logout
+    logout_resp = client.post("/api/logout", headers={"Authorization": f"Bearer {login_token}"})
+    assert logout_resp.status_code == 200
+
+    # Profile after logout should fail
+    me_after = client.get("/api/me", headers={"Authorization": f"Bearer {login_token}"})
+    assert me_after.status_code == 401
+
+
+# --- 9. Test Authenticated Verification & History Workflow ---
+
+def test_authenticated_verification_and_history_workflow():
+    """Verify that when a logged-in user verifies a document, it is automatically archived in History."""
+    import secrets
+    unique_suffix = secrets.token_hex(4)
+    username = f"analyst_{unique_suffix}"
+    email = f"{username}@research.org"
+    password = "ResearchPassword123"
+
+    # Register
+    reg_resp = client.post(
+        "/api/register",
+        json={"username": username, "email": email, "password": password},
+    )
+    token = reg_resp.json()["token"]
+
+    # Verify a document with user token
+    sample_resp = client.get("/api/sample")
+    sample_data = sample_resp.json()
+
+    verify_resp = client.post(
+        "/api/verify",
+        json={
+            "document_text": sample_data["document_text"],
+            "paper_title": "Efficiency in Retrieval Transformers",
+            "source_texts": sample_data["source_texts"],
+            "fetch_external": False,
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert verify_resp.status_code == 200
+    v_data = verify_resp.json()
+    assert "analysis_id" in v_data
+    analysis_id = v_data["analysis_id"]
+    assert analysis_id is not None
+
+    # Retrieve history list
+    hist_resp = client.get("/api/history", headers={"Authorization": f"Bearer {token}"})
+    assert hist_resp.status_code == 200
+    history = hist_resp.json()["history"]
+    assert len(history) >= 1
+    assert any(item["id"] == analysis_id for item in history)
+
+    # Retrieve individual analysis detail
+    detail_resp = client.get(f"/api/history/{analysis_id}", headers={"Authorization": f"Bearer {token}"})
+    assert detail_resp.status_code == 200
+    detail_data = detail_resp.json()
+    assert detail_data["paper_title"] == "Efficiency in Retrieval Transformers"
+    assert len(detail_data["results"]) == 4
+    assert detail_data["summary"]["total_claims"] == 4
+
+    # Delete analysis
+    del_resp = client.delete(f"/api/history/{analysis_id}", headers={"Authorization": f"Bearer {token}"})
+    assert del_resp.status_code == 200
+
+    # Retrieve after delete should return 404
+    detail_deleted = client.get(f"/api/history/{analysis_id}", headers={"Authorization": f"Bearer {token}"})
+    assert detail_deleted.status_code == 404
+
+
+# --- 10. Test Unauthenticated Access to History is Blocked ---
+
+def test_unauthenticated_history_access_rejected():
+    """Verify that history endpoints enforce authentication."""
+    resp = client.get("/api/history")
+    assert resp.status_code == 401
+
+    resp_detail = client.get("/api/history/999")
+    assert resp_detail.status_code == 401
+

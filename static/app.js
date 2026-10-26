@@ -17,7 +17,11 @@ const state = {
   activeFilter: 'all',
   activeTab: 'inspector',
   isLoading: false,
-  isMockMode: false 
+  isMockMode: false,
+  currentUser: null,
+  authToken: localStorage.getItem('citeguard_token') || null,
+  historyList: [],
+  authMode: 'login' // 'login' | 'register'
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -74,6 +78,37 @@ const dom = {
   btnExportMd: $('#btn-export-md'),
   btnCopyExport: $('#btn-copy-export'),
 
+  // Auth DOM
+  btnOpenAuth: $('#btn-open-auth'),
+  userPill: $('#user-pill'),
+  userAvatarInitial: $('#user-avatar-initial'),
+  userDisplayName: $('#user-display-name'),
+  btnLogout: $('#btn-logout'),
+
+  authModal: $('#auth-modal'),
+  btnCloseAuth: $('#btn-close-auth'),
+  authModalTitle: $('#auth-modal-title'),
+  tabAuthLogin: $('#tab-auth-login'),
+  tabAuthRegister: $('#tab-auth-register'),
+  authForm: $('#auth-form'),
+  fieldUsernameGroup: $('#field-username-group'),
+  labelUsername: $('#label-username'),
+  authUsername: $('#auth-username'),
+  fieldEmailGroup: $('#field-email-group'),
+  authEmail: $('#auth-email'),
+  authPassword: $('#auth-password'),
+  authError: $('#auth-error'),
+  authErrorText: $('#auth-error-text'),
+  btnAuthSubmit: $('#btn-auth-submit'),
+  authSubmitLabel: $('#auth-submit-label'),
+
+  // History DOM
+  btnRefreshHistory: $('#btn-refresh-history'),
+  btnHistorySignin: $('#btn-history-signin'),
+  historyLoggedOut: $('#history-logged-out'),
+  historyEmpty: $('#history-empty'),
+  historyList: $('#history-list'),
+
   loadingOverlay: $('#loading-overlay'),
   loadingText: $('#loading-text'),
   toastContainer: $('#toast-container'),
@@ -91,7 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initLucide();
   bindEvents();
   checkHealth();
+  initAuth();
 });
+
 
 function initLucide() {
   if (window.lucide) {
@@ -127,6 +164,28 @@ function bindEvents() {
   dom.btnExportMd.addEventListener('click', () => exportReport('md'));
   dom.btnCopyExport.addEventListener('click', copyExportToClipboard);
 
+  // Auth events
+  if (dom.btnOpenAuth) dom.btnOpenAuth.addEventListener('click', () => openAuthModal('login'));
+  if (dom.btnCloseAuth) dom.btnCloseAuth.addEventListener('click', closeAuthModal);
+  if (dom.tabAuthLogin) dom.tabAuthLogin.addEventListener('click', () => setAuthMode('login'));
+  if (dom.tabAuthRegister) dom.tabAuthRegister.addEventListener('click', () => setAuthMode('register'));
+  if (dom.authForm) dom.authForm.addEventListener('submit', handleAuthSubmit);
+  if (dom.btnLogout) dom.btnLogout.addEventListener('click', logout);
+  if (dom.btnRefreshHistory) dom.btnRefreshHistory.addEventListener('click', loadHistory);
+  if (dom.btnHistorySignin) dom.btnHistorySignin.addEventListener('click', () => openAuthModal('login'));
+
+  // Close modal on escape or backdrop click
+  if (dom.authModal) {
+    dom.authModal.addEventListener('click', (e) => {
+      if (e.target === dom.authModal) closeAuthModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !dom.authModal.classList.contains('hidden')) {
+        closeAuthModal();
+      }
+    });
+  }
+
   // Keyboard navigation for claims list
   dom.claimsList.addEventListener('keydown', (e) => {
     if (!state.verifyResults) return;
@@ -157,6 +216,9 @@ function switchTab(tabId) {
   dom.tabContents().forEach(content => {
     content.classList.toggle('active', content.id.replace('tab-', '') === tabId);
   });
+  if (tabId === 'history') {
+    loadHistory();
+  }
   initLucide();
 }
 
@@ -166,6 +228,11 @@ function switchTab(tabId) {
 
 async function apiFetch(url, options = {}) {
   if (state.isMockMode) return getMockData(url, options);
+
+  options.headers = options.headers || {};
+  if (state.authToken && !options.headers['Authorization']) {
+    options.headers['Authorization'] = `Bearer ${state.authToken}`;
+  }
   
   try {
     const response = await fetch(url, options);
@@ -351,7 +418,12 @@ async function verifyCitations() {
 
   showLoading('Verifying citations… Extracting claims and retrieving sources');
   try {
-    const payload = { document_text: state.documentText, fetch_external: true };
+    const payload = {
+      document_text: state.documentText,
+      paper_title: state.documentTitle || 'Verified Research Document',
+      source_texts: state.sourceTexts || {},
+      fetch_external: true
+    };
     const data = await apiFetch('/api/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -369,7 +441,8 @@ async function verifyCitations() {
     updateExportTab();
 
     hideLoading();
-    showToast(`Verification complete: ${data.results.length} claims analyzed`, 'success');
+    const savedMsg = data.analysis_id ? ' (Saved to History)' : '';
+    showToast(`Verification complete: ${data.results.length} claims analyzed${savedMsg}`, 'success');
   } catch (err) {
     hideLoading();
     showToast(err.message, 'error');
@@ -818,6 +891,290 @@ function copyExportToClipboard() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// AUTHENTICATION & HISTORY MODULE
+// ═══════════════════════════════════════════════════════════════
+
+async function initAuth() {
+  if (!state.authToken) {
+    renderAuthUI();
+    return;
+  }
+  try {
+    const data = await apiFetch('/api/me');
+    state.currentUser = data.user;
+    renderAuthUI();
+  } catch (err) {
+    console.warn('Session expired or invalid:', err);
+    state.authToken = null;
+    state.currentUser = null;
+    localStorage.removeItem('citeguard_token');
+    renderAuthUI();
+  }
+}
+
+function renderAuthUI() {
+  if (state.currentUser) {
+    if (dom.btnOpenAuth) dom.btnOpenAuth.classList.add('hidden');
+    if (dom.userPill) {
+      dom.userPill.classList.remove('hidden');
+      dom.userPill.classList.add('flex');
+    }
+    if (dom.userAvatarInitial) {
+      dom.userAvatarInitial.textContent = (state.currentUser.username || 'U')[0].toUpperCase();
+    }
+    if (dom.userDisplayName) {
+      dom.userDisplayName.textContent = state.currentUser.username;
+    }
+  } else {
+    if (dom.btnOpenAuth) dom.btnOpenAuth.classList.remove('hidden');
+    if (dom.userPill) {
+      dom.userPill.classList.add('hidden');
+      dom.userPill.classList.remove('flex');
+    }
+  }
+  if (state.activeTab === 'history') {
+    loadHistory();
+  }
+  initLucide();
+}
+
+function openAuthModal(mode = 'login') {
+  setAuthMode(mode);
+  if (dom.authError) dom.authError.classList.add('hidden');
+  if (dom.authForm) dom.authForm.reset();
+  if (dom.authModal) dom.authModal.classList.remove('hidden');
+  setTimeout(() => {
+    if (dom.authUsername) dom.authUsername.focus();
+  }, 100);
+}
+
+function closeAuthModal() {
+  if (dom.authModal) dom.authModal.classList.add('hidden');
+}
+
+function setAuthMode(mode) {
+  state.authMode = mode;
+  if (dom.authError) dom.authError.classList.add('hidden');
+  if (mode === 'login') {
+    dom.tabAuthLogin.className = 'flex-1 py-2 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-sm';
+    dom.tabAuthRegister.className = 'flex-1 py-2 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-slate-200';
+    dom.fieldEmailGroup.classList.add('hidden');
+    dom.authEmail.removeAttribute('required');
+    dom.labelUsername.textContent = 'Username or Email';
+    dom.authUsername.placeholder = 'Enter username or email';
+    dom.authModalTitle.textContent = 'Welcome Back';
+    dom.authSubmitLabel.textContent = 'Sign In';
+  } else {
+    dom.tabAuthRegister.className = 'flex-1 py-2 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-sm';
+    dom.tabAuthLogin.className = 'flex-1 py-2 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-slate-200';
+    dom.fieldEmailGroup.classList.remove('hidden');
+    dom.authEmail.setAttribute('required', 'true');
+    dom.labelUsername.textContent = 'Username';
+    dom.authUsername.placeholder = 'e.g. alex_researcher';
+    dom.authModalTitle.textContent = 'Create CiteGuard Account';
+    dom.authSubmitLabel.textContent = 'Create Account';
+  }
+}
+
+async function handleAuthSubmit(e) {
+  e.preventDefault();
+  if (dom.authError) dom.authError.classList.add('hidden');
+  const submitBtn = dom.btnAuthSubmit;
+  const originalText = dom.authSubmitLabel.textContent;
+  dom.authSubmitLabel.textContent = state.authMode === 'login' ? 'Signing in…' : 'Creating account…';
+  submitBtn.disabled = true;
+
+  try {
+    let data;
+    if (state.authMode === 'login') {
+      data = await apiFetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username_or_email: dom.authUsername.value.trim(),
+          password: dom.authPassword.value,
+        }),
+      });
+    } else {
+      data = await apiFetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: dom.authUsername.value.trim(),
+          email: dom.authEmail.value.trim(),
+          password: dom.authPassword.value,
+        }),
+      });
+    }
+
+    state.authToken = data.token;
+    state.currentUser = data.user;
+    localStorage.setItem('citeguard_token', data.token);
+    renderAuthUI();
+    closeAuthModal();
+    showToast(`Welcome, ${data.user.username}!`, 'success');
+
+    if (state.activeTab === 'history') {
+      loadHistory();
+    }
+  } catch (err) {
+    if (dom.authError && dom.authErrorText) {
+      dom.authErrorText.textContent = err.message || 'Authentication failed.';
+      dom.authError.classList.remove('hidden');
+    } else {
+      showToast(err.message, 'error');
+    }
+  } finally {
+    dom.authSubmitLabel.textContent = originalText;
+    submitBtn.disabled = false;
+  }
+}
+
+async function logout() {
+  try {
+    await apiFetch('/api/logout', { method: 'POST' });
+  } catch {
+    // Silent fail
+  }
+  state.authToken = null;
+  state.currentUser = null;
+  state.historyList = [];
+  localStorage.removeItem('citeguard_token');
+  renderAuthUI();
+  showToast('Signed out successfully', 'info');
+  if (state.activeTab === 'history') {
+    loadHistory();
+  }
+}
+
+function formatRelativeDate(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffSec = Math.floor((now - date) / 1000);
+  if (diffSec < 60) return 'Just now';
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+async function loadHistory() {
+  if (!dom.historyContainer) return;
+  if (!state.currentUser) {
+    if (dom.historyLoggedOut) dom.historyLoggedOut.classList.remove('hidden');
+    if (dom.historyEmpty) dom.historyEmpty.classList.add('hidden');
+    if (dom.historyList) dom.historyList.classList.add('hidden');
+    initLucide();
+    return;
+  }
+
+  if (dom.historyLoggedOut) dom.historyLoggedOut.classList.add('hidden');
+
+  try {
+    const data = await apiFetch('/api/history');
+    state.historyList = data.history || [];
+    if (state.historyList.length === 0) {
+      if (dom.historyEmpty) dom.historyEmpty.classList.remove('hidden');
+      if (dom.historyList) dom.historyList.classList.add('hidden');
+    } else {
+      if (dom.historyEmpty) dom.historyEmpty.classList.add('hidden');
+      if (dom.historyList) {
+        dom.historyList.classList.remove('hidden');
+        renderHistoryList(state.historyList);
+      }
+    }
+  } catch (err) {
+    showToast(`Failed to load history: ${err.message}`, 'error');
+  }
+  initLucide();
+}
+
+function renderHistoryList(items) {
+  if (!dom.historyList) return;
+  dom.historyList.innerHTML = items.map(item => {
+    const s = item.summary || {};
+    const dateFormatted = formatRelativeDate(item.created_at);
+    return `
+      <div class="glass rounded-2xl p-5 border border-slate-800/60 hover:border-indigo-500/40 transition-all flex flex-col justify-between group cursor-pointer" onclick="loadAnalysisIntoInspector(${item.id})">
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <span class="text-[11px] font-mono text-slate-500">${escapeHtml(dateFormatted)}</span>
+            <button class="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-800/60 rounded-lg transition-colors" title="Delete" onclick="deleteHistoryAnalysis(${item.id}, event)">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+          <h3 class="text-sm font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors line-clamp-2 mb-3">
+            ${escapeHtml(item.paper_title || 'Untitled Document')}
+          </h3>
+          <div class="flex flex-wrap items-center gap-1.5 mb-4">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
+              🟢 ${s.supported || 0}
+            </span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-950/60 text-amber-400 border border-amber-800/40">
+              🟡 ${s.weakly_supported || 0}
+            </span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-950/60 text-red-400 border border-red-800/40">
+              🔴 ${s.mismatched || 0}
+            </span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-950/60 text-indigo-400 border border-indigo-800/40">
+              ⚪ ${s.unverifiable || 0}
+            </span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between pt-3 border-t border-slate-800/40 text-xs">
+          <span class="text-slate-400 text-[11px]">${s.total_claims || 0} claims</span>
+          <span class="text-indigo-400 font-medium group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+            Inspect <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          </span>
+        </div>
+      </div>
+    `;
+  }).join('');
+  initLucide();
+}
+
+async function loadAnalysisIntoInspector(analysisId) {
+  showLoading('Loading analysis into Inspector…');
+  try {
+    const data = await apiFetch(`/api/history/${analysisId}`);
+    setDocumentLoaded(data.document_text, data.paper_title);
+
+    state.verifyResults = {
+      summary: data.summary,
+      results: data.results,
+      analysis_id: data.id,
+    };
+    state.selectedClaimId = null;
+    state.activeFilter = 'all';
+
+    updateKPI(data.summary);
+    updateFilterCounts(data.summary, data.results.length);
+    renderClaimsList();
+    resetEvidencePanel();
+    updateExportTab();
+
+    hideLoading();
+    switchTab('inspector');
+    showToast(`Loaded "${data.paper_title}" into Inspector`, 'success');
+  } catch (err) {
+    hideLoading();
+    showToast(`Failed to load analysis: ${err.message}`, 'error');
+  }
+}
+
+async function deleteHistoryAnalysis(analysisId, event) {
+  if (event) event.stopPropagation();
+  try {
+    await apiFetch(`/api/history/${analysisId}`, { method: 'DELETE' });
+    showToast('Analysis removed from history', 'info');
+    loadHistory();
+  } catch (err) {
+    showToast(`Could not delete analysis: ${err.message}`, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // UTILITIES & MOCK DATA GENERATORS
 // ═══════════════════════════════════════════════════════════════
 
@@ -847,9 +1204,46 @@ function getMockData(url, options) {
           document_text: `Mock document fetched from ${bodyStr}. Contains claims [1] and [2].`,
           source_texts: {}, title: `Fetched Doc: ${bodyStr}`
         });
+      } else if (url === '/api/register' || url === '/api/login') {
+        const parsed = options.body ? JSON.parse(options.body) : {};
+        const username = parsed.username || parsed.username_or_email || 'demo_user';
+        resolve({
+          success: true,
+          token: 'mock-jwt-token-12345',
+          user: { id: 1, username, email: `${username}@example.com` }
+        });
+      } else if (url === '/api/me') {
+        resolve({
+          user: state.currentUser || { id: 1, username: 'demo_user', email: 'demo@example.com' }
+        });
+      } else if (url === '/api/logout') {
+        resolve({ success: true });
+      } else if (url === '/api/history') {
+        resolve({
+          history: [
+            {
+              id: 1,
+              paper_title: "Sample Paper: Efficiency and Hallucinations in RAG",
+              created_at: new Date().toISOString(),
+              summary: { total_claims: 4, supported: 1, weakly_supported: 1, mismatched: 1, unverifiable: 1 }
+            }
+          ]
+        });
+      } else if (url.startsWith('/api/history/')) {
+        resolve({
+          id: 1,
+          paper_title: "Sample Paper: Efficiency and Hallucinations in RAG",
+          document_text: "Sample paper full text [1], [2], [3], [4].",
+          created_at: new Date().toISOString(),
+          summary: { total_claims: 4, supported: 1, weakly_supported: 1, mismatched: 1, unverifiable: 1 },
+          results: [
+            { claim_id: 1, verdict: "Supported", confidence: 0.95, claim_text: "FlashAttention scales linearly.", citation_marker: "[1]", cited_reference: "Dao 2022", source_found: true, source_type: "Local BM25", evidence_snippet: "FlashAttention achieves linear scaling.", explanation: "Direct match." }
+          ]
+        });
       } else if (url === '/api/verify') {
         resolve({
           summary: { total_claims: 4, supported: 1, weakly_supported: 1, mismatched: 1, unverifiable: 1 },
+          analysis_id: 1,
           results: [
             { 
               claim_id: 1, verdict: "Supported", confidence: 0.96, 
@@ -879,3 +1273,4 @@ function getMockData(url, options) {
     }, 1500); 
   });
 }
+
