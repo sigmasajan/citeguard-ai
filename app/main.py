@@ -639,5 +639,6 @@ def run_benchmark() -> Dict[str, Any]:
 
 
 # Ensure static directory exists before mounting to guarantee server never crashes
-os.makedirs("static", exist_ok=True)
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+os.makedirs(STATIC_DIR, exist_ok=True)
+app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
