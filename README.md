@@ -24,19 +24,53 @@ Per Hacktoberfest rules, this project meaningfully extends and integrates powerf
 
 ## Architecture & System Workflow
 
- [ Research Document / PDF ] 
-             │
-             ▼
-   [ Claim Extractor ] ──► (Parses inline markers & bibliography)
-             │
-             ▼
-   [ Hybrid Retriever ] ──► (BM25 local chunk search OR Crossref/arXiv API)
-             │
-             ▼
-   [ LLM Verdict Engine ] ──► (Gemma / Llama open-weight model via strict JSON schema)
-             │
-             ▼
-   [ Split-Screen UI Dashboard ] ──► (Interactive Inspector, KPIs, & Benchmarks)
+```mermaid
+flowchart TD
+    subgraph S1 ["1. Document Ingestion"]
+        A["📄 Research Document / Uploaded PDF"] --> B["🔍 PyMuPDF Text Extractor"]
+    end
+
+    subgraph S2 ["2. Extraction & Citation Mapping"]
+        B --> C["✂️ Claim & Citation Extractor"]
+        C --> D["Inline Citation Markers<br/>[1], [2], (Author, Year)"]
+        C --> E["Bibliography References<br/>Title, DOI, Authors"]
+    end
+
+    subgraph S3 ["3. Hybrid Evidence Retrieval"]
+        D & E --> F["🔎 Evidence Retriever"]
+        F --> G["Local Document Chunks<br/>BM25 Lexical Ranking"]
+        F --> H["Open-Access APIs<br/>Crossref & arXiv"]
+    end
+
+    subgraph S4 ["4. LLM Verdict Engine"]
+        G & H --> I["⚖️ Verification Judge<br/>(Gemini / Groq / Offline NLI)"]
+        I --> J{"Citation Fidelity"}
+        J --> K["🟢 Supported"]
+        J --> L["🟡 Weakly Supported"]
+        J --> M["🔴 Mismatched"]
+        J --> N["⚪ Unverifiable"]
+    end
+
+    subgraph S5 ["5. Research Workspace"]
+        K & L & M & N --> O["🖥️ Interactive Split-Screen Dashboard<br/>(Claim Inspector, KPIs, History & Golden Benchmarks)"]
+    end
+
+    style S1 fill:#1e1b4b,stroke:#4338ca,stroke-width:2px,color:#e0e7ff
+    style S2 fill:#0f172a,stroke:#334155,stroke-width:2px,color:#e2e8f0
+    style S3 fill:#064e3b,stroke:#059669,stroke-width:2px,color:#d1fae5
+    style S4 fill:#312e81,stroke:#6366f1,stroke-width:2px,color:#e0e7ff
+    style S5 fill:#18181b,stroke:#6366f1,stroke-width:2px,color:#fafafa
+```
+
+### Pipeline Breakdown
+
+| Stage | Component | Technical Approach |
+| :--- | :--- | :--- |
+| **1. Ingestion** | Document & PDF Parser | Extracts clean text using `PyMuPDF` with layout preservation and section boundary detection. |
+| **2. Extraction** | Claim & Citation Linker | Matches bracketed (`[1]`, `[1-3]`) and parenthetical (`Author, 2024`) inline citations to entries in the References section. |
+| **3. Retrieval** | Hybrid Evidence Retriever | Tokenizes source texts into sentence chunks with `rank-bm25` lexical ranking; queries Crossref and arXiv REST APIs when local texts are unavailable. |
+| **4. Verification** | 4-Tier Classification Judge | Evaluates claim fidelity using Gemini 2.5 Flash / Groq LLaMA 3.3 with deterministic offline heuristic fallback. Classifies into **Supported**, **Weakly Supported**, **Mismatched**, or **Unverifiable**. |
+| **5. Workspace** | Split-Screen UI | Renders claims alongside cited source passages, side-by-side claim inspector, reliability badges, and audit history. |
 
 ---
 
