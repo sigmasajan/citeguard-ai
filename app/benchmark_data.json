@@ -1,1 +1,110 @@
-
+[
+  {
+    "id": 1,
+    "claim_text": "FlashAttention scales linearly with sequence length by reducing memory reads and writes [1].",
+    "cited_reference": "[1] Dao, T., et al. (2022). FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness. NeurIPS.",
+    "evidence_snippet": "FlashAttention makes attention fast and memory-efficient by computing exact attention with IO-awareness, reducing HBM reads and writes to scale linearly with sequence length.",
+    "source_found": true,
+    "expected_verdict": "Supported",
+    "explanation": "The retrieved passage directly verifies that FlashAttention achieves linear scaling with sequence length via IO-awareness and reduced memory operations."
+  },
+  {
+    "id": 2,
+    "claim_text": "Transformer models trained on large multilingual corpora achieve state-of-the-art cross-lingual transfer without task-specific tuning [2].",
+    "cited_reference": "[2] Conneau, A., et al. (2020). Unsupervised Cross-lingual Representation Learning at Scale. ACL.",
+    "evidence_snippet": "We present XLM-R, showing that transformer models trained on massive multilingual corpora achieve state-of-the-art results on cross-lingual transfer benchmarks without requiring task-specific architectural modifications.",
+    "source_found": true,
+    "expected_verdict": "Supported",
+    "explanation": "The source paper confirms that large-scale multilingual pretraining enables state-of-the-art transfer without task-specific modifications."
+  },
+  {
+    "id": 3,
+    "claim_text": "Knowledge distillation allows compact student models to match over 95% of teacher network accuracy on natural language inference tasks [3].",
+    "cited_reference": "[3] Sanh, V., et al. (2019). DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter. arXiv.",
+    "evidence_snippet": "DistilBERT reduces the size of a BERT model by 40%, while retaining 97% of its language understanding capabilities and matching over 95% of teacher network accuracy on downstream natural language inference benchmarks.",
+    "source_found": true,
+    "expected_verdict": "Supported",
+    "explanation": "The source directly matches the 95% retention metric and domain specified in the claim."
+  },
+  {
+    "id": 4,
+    "claim_text": "Reinforcement learning from human feedback completely solves neural language model hallucination across all conversational domains [4].",
+    "cited_reference": "[4] Ouyang, L., et al. (2022). Training language models to follow instructions with human feedback. NeurIPS.",
+    "evidence_snippet": "Our preliminary findings show that fine-tuning with human feedback reduces toxic outputs and suggests improvements in truthful answers, though hallucinations remain an active limitation requiring further research in conversational domains.",
+    "source_found": true,
+    "expected_verdict": "Weakly Supported",
+    "explanation": "The claim asserts that RLHF completely solves hallucination, whereas the source only notes preliminary improvements and emphasizes that hallucinations remain an active limitation."
+  },
+  {
+    "id": 5,
+    "claim_text": "Chain-of-thought prompting guarantees perfect multi-step reasoning capabilities in smaller neural networks under 1 billion parameters [5].",
+    "cited_reference": "[5] Wei, J., et al. (2022). Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. NeurIPS.",
+    "evidence_snippet": "We explore chain-of-thought prompting as a mechanism that elicits multi-step reasoning abilities. However, these abilities are emergent in large models (typically over 100B parameters) and preliminary experiments in smaller models under 1 billion parameters yield inconsistent, modest improvements.",
+    "source_found": true,
+    "expected_verdict": "Weakly Supported",
+    "explanation": "The claim overgeneralizes to smaller models, while the evidence states gains in sub-1B models are preliminary and inconsistent."
+  },
+  {
+    "id": 6,
+    "claim_text": "Quantization-aware training ensures zero loss in model reasoning capabilities across every domain [6].",
+    "cited_reference": "[6] Dettmers, T., et al. (2023). QLoRA: Efficient Finetuning of Quantized LLMs. NeurIPS.",
+    "evidence_snippet": "QLoRA demonstrates that 4-bit quantization with LoRA adapters can match 16-bit performance on several benchmarks, but our exploratory evaluations suggest potential degradations on specialized mathematical reasoning tasks that require further study.",
+    "source_found": true,
+    "expected_verdict": "Weakly Supported",
+    "explanation": "The claim claims zero loss across every domain, whereas the source notes exploratory signs of degradation on specialized reasoning tasks."
+  },
+  {
+    "id": 7,
+    "claim_text": "The proposed pruning technique reduced transformer inference latency by 85% compared to the dense baseline [7].",
+    "cited_reference": "[7] Lagunas, F., et al. (2021). Block Pruning For Faster Transformers. EMNLP.",
+    "evidence_snippet": "Our empirical evaluations indicate that structured block pruning reduced transformer inference latency by only 18% on standard benchmark hardware, falling significantly short of double-digit speedups.",
+    "source_found": true,
+    "expected_verdict": "Mismatched",
+    "explanation": "Direct numerical contradiction: The claim claims an 85% latency reduction, while the source reports only an 18% reduction."
+  },
+  {
+    "id": 8,
+    "claim_text": "Recent clinical trials confirmed that the experimental synthetic peptide eliminated autoimmune inflammation in 95% of subjects [8].",
+    "cited_reference": "[8] Alvarez, R., et al. (2023). Phase II Evaluation of Peptide Immunomodulators. Journal of Immunology.",
+    "evidence_snippet": "In our double-blind cohort, the synthetic peptide failed to eliminate autoimmune inflammation, and results showed no significant difference compared to the placebo control group.",
+    "source_found": true,
+    "expected_verdict": "Mismatched",
+    "explanation": "Direct factual contradiction: The claim states the peptide eliminated inflammation, but the source explicitly states it failed to eliminate inflammation."
+  },
+  {
+    "id": 9,
+    "claim_text": "Our deep neural network achieved 99.4% accuracy on solar flare prediction using magnetogram data [9].",
+    "cited_reference": "[9] Henderson, M., et al. (2022). Soil Erosion Dynamics in Temperate Agricultural Basins. Geoderma.",
+    "evidence_snippet": "This paper analyzes rainfall erosivity and surface runoff in temperate agricultural river basins using satellite multispectral sensors and ground sediment traps.",
+    "source_found": true,
+    "expected_verdict": "Mismatched",
+    "explanation": "Complete topical mismatch: The claim discusses solar flare prediction, while the cited paper investigates soil erosion and rainfall runoff."
+  },
+  {
+    "id": 10,
+    "claim_text": "Quantum-assisted gradient descent was proven to converge exponentially faster than Adam on convex manifolds [10].",
+    "cited_reference": "[10] Cyberdyne, T., & Vance, X. (2024). Fictional Quantum Accelerators for Gradient Flow. Journal of Imaginary Computation, 45(2), 112-120.",
+    "evidence_snippet": "",
+    "source_found": false,
+    "expected_verdict": "Unverifiable",
+    "explanation": "The cited paper does not exist in scientific databases or indexes and could not be retrieved."
+  },
+  {
+    "id": 11,
+    "claim_text": "The 2024 Global AI Safety Index reported that 78% of foundation models implement cryptographic provenance watermarking [11].",
+    "cited_reference": "[11] Fabricated Research Group. (2024). Comprehensive Global AI Safety Index Annual Report.",
+    "evidence_snippet": "",
+    "source_found": false,
+    "expected_verdict": "Unverifiable",
+    "explanation": "The cited organization and report are fabricated; no authentic evidence text could be retrieved."
+  },
+  {
+    "id": 12,
+    "claim_text": "A 2025 survey established that 90% of hospital EHR systems have fully replaced human radiologists with generative vision transformers [12].",
+    "cited_reference": "[12] NonExistent Institute. (2025). The Complete Replacement of Clinical Radiology in Modern Healthcare.",
+    "evidence_snippet": "",
+    "source_found": false,
+    "expected_verdict": "Unverifiable",
+    "explanation": "The cited reference could not be found in indexed medical or scientific literature."
+  }
+]
