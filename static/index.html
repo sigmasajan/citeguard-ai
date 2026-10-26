@@ -3,246 +3,495 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CiteGuard AI — Citation Verifier</title>
+  <title>CiteGuard AI — Autonomous Claim-to-Source Verification Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 
-<body class="min-h-screen antialiased flex flex-col">
+<body class="min-h-screen antialiased relative selection:bg-indigo-500/30 selection:text-indigo-200">
 
-  <!-- HEADER -->
-  <header class="sticky top-0 z-50 glass border-b border-slate-800/50 shrink-0">
-    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <div class="flex items-center gap-3 w-1/4">
-          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+  <!-- TOP SCROLL PROGRESS BAR -->
+  <div class="fixed top-0 left-0 right-0 h-1 z-[100] bg-slate-900/50">
+    <div id="scroll-progress" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 w-0 transition-all duration-75"></div>
+  </div>
+
+  <!-- AMBIENT AURORA ORBS & GRID -->
+  <div class="aurora-orb orb-1"></div>
+  <div class="aurora-orb orb-2"></div>
+  <div class="aurora-orb orb-3"></div>
+  <div class="fixed inset-0 bg-cyber-grid pointer-events-none z-0"></div>
+
+  <!-- ═══════════════════ STICKY NAVBAR ═══════════════════ -->
+  <header class="sticky top-0 z-50 glass border-b border-slate-800/80">
+    <div class="max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 gap-4">
+        
+        <!-- Brand Logo -->
+        <a href="#" class="flex items-center gap-3 group">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition-transform border border-indigo-400/30">
             <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
           </div>
           <div>
-            <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-400 bg-clip-text text-transparent">CiteGuard AI</h1>
+            <div class="flex items-center gap-2">
+              <span class="text-lg font-extrabold tracking-tight text-white">CiteGuard</span>
+              <span class="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">AI 2.4</span>
+            </div>
+            <p class="text-[10px] text-slate-400 -mt-0.5 tracking-widest uppercase font-semibold">Research Integrity Engine</p>
           </div>
-        </div>
+        </a>
 
-        <!-- Central Command Trigger -->
-        <div class="hidden md:flex flex-1 justify-center">
-          <button id="btn-open-palette-nav" class="flex items-center justify-between w-64 px-3 py-1.5 bg-slate-900/50 hover:bg-slate-800 border border-slate-700/60 hover:border-indigo-500/50 rounded-lg transition-all text-sm text-slate-400 group">
-            <span class="flex items-center gap-2"><i data-lucide="search" class="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors"></i> Search Actions...</span>
-            <div class="flex gap-1"><kbd class="kbd text-[10px] px-1 py-0 shadow-none transform-none">⌘</kbd><kbd class="kbd text-[10px] px-1 py-0 shadow-none transform-none">K</kbd></div>
+        <!-- Navigation Tabs (Restored & Upgraded) -->
+        <nav id="tab-nav" class="hidden md:flex items-center gap-1.5 bg-slate-950/70 rounded-xl p-1.5 border border-slate-800">
+          <button class="tab-btn active px-4 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:text-white flex items-center gap-2" data-tab="inspector">
+            <i data-lucide="scan-search" class="w-4 h-4 text-indigo-400"></i> Inspector Workspace
           </button>
-        </div>
+          <button class="tab-btn px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white flex items-center gap-2" data-tab="benchmark">
+            <i data-lucide="activity" class="w-4 h-4 text-purple-400"></i> Benchmark Suite
+          </button>
+          <button class="tab-btn px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white flex items-center gap-2" data-tab="export">
+            <i data-lucide="file-code-2" class="w-4 h-4 text-emerald-400"></i> Audit &amp; Export
+          </button>
+        </nav>
 
-        <div class="flex items-center justify-end gap-4 text-xs text-slate-500 w-1/4">
-          <button id="btn-toggle-history" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors">
-            <i data-lucide="history" class="w-3.5 h-3.5"></i> Sessions
+        <!-- Right Controls: Command Palette, Sessions, API Status -->
+        <div class="flex items-center gap-3">
+          <button id="btn-open-palette-nav" class="hidden sm:flex items-center justify-between gap-4 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-700/70 hover:border-indigo-500/50 rounded-xl transition-all text-xs text-slate-400 group">
+            <span class="flex items-center gap-2"><i data-lucide="terminal" class="w-3.5 h-3.5 text-indigo-400"></i> Quick Actions...</span>
+            <div class="flex gap-1"><kbd class="kbd">⌘</kbd><kbd class="kbd">K</kbd></div>
           </button>
-          <div id="mock-badge" class="hidden px-2 py-0.5 bg-amber-950/50 text-amber-400 border border-amber-800/50 rounded-md font-medium items-center gap-1">
-            <i data-lucide="wifi-off" class="w-3 h-3"></i> Mock Mode
+
+          <button id="btn-toggle-history" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/70 text-xs font-semibold transition-all">
+            <i data-lucide="history" class="w-3.5 h-3.5 text-purple-400"></i>
+            <span>Sessions</span>
+            <span id="history-count-badge" class="px-1.5 py-0.2 bg-indigo-500/20 text-indigo-300 rounded text-[10px] font-mono">0</span>
+          </button>
+
+          <div class="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/60 border border-slate-800 text-xs">
+            <span id="api-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="api-status" class="font-medium text-slate-400">Engine Ready</span>
+          </div>
+          <div id="mock-badge" class="hidden px-2.5 py-1 bg-amber-950/80 text-amber-300 border border-amber-700/50 rounded-xl text-[11px] font-bold items-center gap-1.5">
+            <i data-lucide="sparkles" class="w-3 h-3"></i> Live Demo Mode
           </div>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- SAVED SESSIONS DRAWER -->
-  <div id="history-drawer" class="fixed right-0 top-16 bottom-0 w-80 glass border-l border-slate-700/50 z-40 translate-x-full shadow-2xl flex flex-col">
-    <div class="p-4 border-b border-slate-700/50 flex items-center justify-between bg-slate-900/80">
-      <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4"></i> Verification History</h2>
-      <button id="btn-close-history" class="text-slate-400 hover:text-white transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
-    </div>
-    <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3">
-      <div class="text-center text-slate-500 text-xs py-10">No saved sessions yet.</div>
-    </div>
-  </div>
+  <!-- ═══════════════════ MAIN SCROLLABLE PAGE ═══════════════════ -->
+  <main class="relative z-10 max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-24">
 
-  <!-- COMMAND PALETTE MODAL (⌘K) -->
-  <div id="cmd-palette-modal" class="hidden fixed inset-0 z-[250] flex items-start justify-center pt-[10vh]">
-    <div class="absolute inset-0 modal-backdrop" id="cmd-palette-backdrop"></div>
-    <div class="relative w-full max-w-2xl glass-light border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-scale-in flex flex-col bg-slate-900/90">
-      <div class="flex items-center px-4 py-3 border-b border-slate-700/60 bg-slate-900/50">
-        <i data-lucide="search" class="w-5 h-5 text-indigo-400 mr-3"></i>
-        <input type="text" id="cmd-palette-input" class="flex-1 bg-transparent border-none text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-0 text-lg" placeholder="Type a command or search..." autocomplete="off">
-        <kbd class="kbd shadow-none transform-none text-[10px]">ESC</kbd>
-      </div>
-      <div class="max-h-[60vh] overflow-y-auto p-2" id="cmd-palette-list">
-        <!-- Command items injected via JS -->
-      </div>
-    </div>
-  </div>
+    <!-- ─── TAB 1: INSPECTOR WORKSPACE ─── -->
+    <div id="tab-inspector" class="tab-content active space-y-6">
 
-  <!-- KEYMAP LEGEND MODAL -->
-  <div id="keymap-modal" class="hidden fixed inset-0 z-[250] flex items-center justify-center">
-    <div class="absolute inset-0 modal-backdrop" id="keymap-backdrop"></div>
-    <div class="relative w-full max-w-md glass rounded-2xl border border-slate-700 p-6 animate-scale-in shadow-2xl">
-      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/50">
-        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2"><i data-lucide="keyboard" class="w-5 h-5 text-indigo-400"></i> Keyboard Shortcuts</h2>
-        <button id="btn-close-keymap" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
-      </div>
-      <div class="space-y-4">
-        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Command Palette</span><div class="flex gap-1"><kbd class="kbd">Ctrl/⌘</kbd><kbd class="kbd">K</kbd></div></div>
-        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Next Claim</span><div class="flex gap-1"><kbd class="kbd">J</kbd> or <kbd class="kbd">↓</kbd></div></div>
-        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Previous Claim</span><div class="flex gap-1"><kbd class="kbd">K</kbd> or <kbd class="kbd">↑</kbd></div></div>
-        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Search Claims</span><div class="flex gap-1"><kbd class="kbd">/</kbd></div></div>
-        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Reset/Close</span><div class="flex gap-1"><kbd class="kbd">Esc</kbd></div></div>
-      </div>
-    </div>
-  </div>
+      <!-- BOLD HERO & COMMAND DECK -->
+      <section class="relative rounded-3xl glass p-6 sm:p-8 overflow-hidden border border-indigo-500/20 spotlight-card">
+        <div class="absolute -right-20 -top-20 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
+          <div class="max-w-2xl">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-bold mb-3">
+              <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+              Autonomous Claim-to-Source NLI Verification
+            </div>
+            <h2 class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+              Eliminate Hallucinated Citations &amp; <span class="text-gradient-animated">Verify Ground Truth.</span>
+            </h2>
+            <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+              Extract empirical claims from manuscripts, cross-examine them against Crossref, arXiv, and PDFs in real time, and auto-rewrite unsupported statements.
+            </p>
+          </div>
 
-  <!-- FLOATING HOTKEY LEGEND BAR -->
-  <div id="floating-hotkeys" class="fixed bottom-6 right-6 z-[150] glass px-3 py-2 rounded-xl shadow-lg border border-slate-700/60 flex items-center gap-3 cursor-pointer hover:bg-slate-800/80 transition-all hover:scale-105 group">
-    <div class="flex items-center gap-1.5 border-r border-slate-700 pr-3">
-      <kbd class="kbd group-hover:border-indigo-500/50 transition-colors text-[10px]">J</kbd> / <kbd class="kbd group-hover:border-indigo-500/50 transition-colors text-[10px]">K</kbd>
-      <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Navigate</span>
-    </div>
-    <div class="flex items-center gap-1.5">
-      <div class="flex gap-0.5"><kbd class="kbd group-hover:border-indigo-500/50 transition-colors text-[10px]">⌘</kbd><kbd class="kbd group-hover:border-indigo-500/50 transition-colors text-[10px]">K</kbd></div>
-      <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Palette</span>
-    </div>
-  </div>
-
-  <!-- MAIN CONTENT -->
-  <main class="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 relative">
-
-    <div id="loading-overlay" class="hidden fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center">
-      <div class="text-center animate-fade-in">
-        <div class="relative w-16 h-16 mx-auto mb-4">
-          <div class="absolute inset-0 rounded-full border-2 border-slate-700"></div>
-          <div class="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-500 animate-spin"></div>
-          <i data-lucide="shield-check" class="absolute inset-0 m-auto w-6 h-6 text-indigo-400 animate-pulse-soft"></i>
+          <!-- Quick Preset Sample Switcher -->
+          <div class="flex flex-col gap-2 shrink-0 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i> Instant Paper Presets
+            </span>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="loadPresetPaper('transformers')" class="px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-200 border border-indigo-500/30 text-xs font-semibold transition-all">
+                🧠 Transformer &amp; LLM Scaling
+              </button>
+              <button onclick="loadPresetPaper('biomed')" class="px-3 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-200 border border-emerald-500/30 text-xs font-semibold transition-all">
+                🧬 CRISPR Gene Editing Audit
+              </button>
+            </div>
+          </div>
         </div>
-        <p id="loading-text" class="text-sm text-slate-300 font-medium">Processing…</p>
-      </div>
-    </div>
 
-    <!-- MAIN TAB CONTAINER -->
-    <div id="tab-inspector" class="tab-content active h-full flex-col min-h-0">
-      
-      <!-- Top Action Bar -->
-      <div class="glass rounded-2xl p-4 mb-4 shrink-0 flex flex-col gap-4 z-10 relative">
-        <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
-          <div class="flex items-center gap-3 w-full lg:w-auto">
-            <button id="btn-load-demo" class="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold rounded-xl shadow-lg transition-all">
-              <i data-lucide="flask-conical" class="w-4 h-4"></i> Demo
+        <!-- Unified Ingestion Control Bar -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 pt-5 border-t border-slate-800/80 items-center">
+          
+          <!-- Demo & File Upload -->
+          <div class="lg:col-span-4 flex items-center gap-2.5">
+            <button id="btn-load-demo" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5">
+              <i data-lucide="flask-conical" class="w-4 h-4"></i> Load API Sample
             </button>
-            <label class="flex items-center justify-center gap-2 px-4 py-2 glass-light rounded-xl cursor-pointer hover:bg-slate-700/40 text-sm text-slate-300 transition-all flex-1 lg:flex-none">
-              <i data-lucide="file-up" class="w-4 h-4"></i> <span id="file-label">Upload PDF</span>
-              <input type="file" id="file-input" accept=".pdf,.txt" class="hidden" />
+
+            <label class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 rounded-xl cursor-pointer text-xs sm:text-sm font-semibold transition-all hover:border-indigo-500/50">
+              <i data-lucide="upload-cloud" class="w-4 h-4 text-indigo-400"></i>
+              <span id="file-label" class="truncate">Upload PDF / TXT</span>
+              <input type="file" id="file-input" accept=".pdf,.txt,.text" class="hidden" />
             </label>
           </div>
-          
-          <div class="flex items-center gap-2 w-full lg:w-1/2 relative">
-            <i data-lucide="link" class="w-4 h-4 text-slate-500 absolute left-3"></i>
-            <input type="text" id="url-input" class="w-full bg-slate-900/50 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-indigo-500 transition-all" placeholder="Paste arXiv URL or DOI...">
-            <button id="btn-fetch-url" class="absolute right-1 top-1 bottom-1 px-3 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-lg text-slate-200 transition-colors">Fetch</button>
+
+          <!-- Direct arXiv / DOI Input -->
+          <div class="lg:col-span-5 relative flex items-center">
+            <i data-lucide="globe" class="w-4 h-4 text-slate-500 absolute left-3.5 pointer-events-none"></i>
+            <input type="text" id="url-input" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-xl pl-10 pr-24 py-3 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="Paste DOI or arXiv URL (e.g., https://arxiv.org/abs/1706.03762)" />
+            <button id="btn-fetch-url" class="absolute right-1.5 top-1.5 bottom-1.5 px-3.5 bg-slate-800 hover:bg-indigo-600 text-xs font-bold rounded-lg text-slate-200 hover:text-white transition-colors flex items-center gap-1">
+              <i data-lucide="arrow-down-to-line" class="w-3.5 h-3.5"></i> Fetch
+            </button>
           </div>
 
-          <button id="btn-verify" disabled class="w-full lg:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white text-sm font-semibold rounded-xl shadow-lg transition-all">
-            <i data-lucide="search-check" class="w-4 h-4"></i> Verify
-          </button>
-        </div>
-
-        <div id="doc-indicator" class="hidden pt-2 border-t border-slate-700/40 flex items-center justify-between text-xs">
-          <div class="flex items-center gap-2">
-            <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400"></i>
-            <span class="text-slate-400">Loaded:</span>
-            <span id="doc-title" class="text-slate-300 font-medium truncate max-w-sm"></span>
+          <!-- Primary Verify Action -->
+          <div class="lg:col-span-3 flex items-center gap-2">
+            <button id="btn-verify" class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white text-sm font-extrabold rounded-xl shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5">
+              <i data-lucide="sparkles" class="w-4 h-4"></i> Run AI Verification
+            </button>
           </div>
-          <button id="btn-clear-doc" class="text-slate-500 hover:text-rose-400 flex items-center gap-1"><i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Clear</button>
         </div>
-      </div>
 
-      <!-- KPI & Health Score -->
-      <div id="kpi-section" class="flex flex-col lg:flex-row gap-4 mb-4 shrink-0">
-        <!-- Health Score -->
-        <div class="glass rounded-2xl p-4 lg:w-1/3 flex items-center gap-4">
-          <div class="relative w-20 h-20 shrink-0">
-            <svg class="w-full h-full -rotate-90" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="36" fill="none" stroke="currentColor" class="text-slate-800" stroke-width="6" />
-              <circle id="health-ring" cx="40" cy="40" r="36" fill="none" stroke="#4ade80" stroke-width="6" stroke-dasharray="226" stroke-dashoffset="226" stroke-linecap="round" class="score-ring" />
+        <!-- Active Document Telemetry Strip -->
+        <div id="doc-indicator" class="mt-4 pt-3 border-t border-slate-800/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-3">
+            <span class="px-2.5 py-1 rounded-md bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-bold flex items-center gap-1.5">
+              <i data-lucide="file-check-2" class="w-3.5 h-3.5"></i> Active Manuscript
+            </span>
+            <span id="doc-title" class="text-slate-200 font-bold truncate max-w-md">Attention Is All You Need &amp; Scaling Laws (Interactive Showcase)</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <button id="btn-toggle-manuscript" class="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+              <i data-lucide="book-open" class="w-3.5 h-3.5"></i> <span>Toggle Source Text Reader</span>
+            </button>
+            <button id="btn-clear-doc" class="text-slate-400 hover:text-rose-400 font-semibold flex items-center gap-1 transition-colors">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear
+            </button>
+          </div>
+        </div>
+
+        <!-- Collapsible Interactive Manuscript Reader -->
+        <div id="manuscript-drawer" class="hidden mt-4 p-4 rounded-2xl bg-slate-950/90 border border-slate-800 max-h-48 overflow-y-auto">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Raw Manuscript Context (Click any highlighted citation marker to inspect)</span>
+            <span class="text-[11px] font-mono text-slate-500" id="manuscript-char-count"></span>
+          </div>
+          <p id="manuscript-body" class="text-xs sm:text-sm text-slate-300 leading-relaxed font-serif"></p>
+        </div>
+      </section>
+
+      <!-- ─── KPI BENTO MATRIX & HEALTH GAUGE ─── -->
+      <section id="kpi-section" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
+        
+        <!-- Overall Health Gauge Card -->
+        <div class="lg:col-span-4 glass rounded-2xl p-5 flex items-center gap-5 border-l-4 border-indigo-500 spotlight-card">
+          <div class="relative w-24 h-24 shrink-0">
+            <svg class="w-full h-full -rotate-90" viewBox="0 0 96 96">
+              <circle cx="48" cy="48" r="40" fill="none" stroke="rgba(30,41,59,0.9)" stroke-width="8" />
+              <circle id="health-ring" cx="48" cy="48" r="40" fill="none" stroke="#10b981" stroke-width="8" stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round" class="score-ring" />
             </svg>
             <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <span id="health-score-val" class="text-xl font-bold text-white">—</span>
+              <span id="health-score-val" class="text-2xl font-extrabold text-white">—</span>
+              <span class="text-[9px] font-bold uppercase tracking-widest text-slate-400">Score</span>
             </div>
           </div>
-          <div>
-            <h3 class="text-sm font-bold text-slate-200">Citation Health</h3>
-            <p id="health-score-grade" class="text-xs font-mono text-slate-400 mt-0.5">Grade: N/A</p>
-            <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Overall Integrity</p>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Citation Health</span>
+              <span id="health-score-grade" class="px-2 py-0.5 text-xs font-extrabold rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Grade B+</span>
+            </div>
+            <p id="health-summary-text" class="text-xs text-slate-400 leading-relaxed">
+              Weighted integrity index across all extracted empirical claims.
+            </p>
           </div>
         </div>
 
-        <!-- Stats -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
-          <div class="glass rounded-2xl p-3 border-b-2 border-emerald-500/60" id="kpi-card-supported">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Supported</p>
-            <span class="text-2xl font-bold text-emerald-400" id="count-supported">—</span>
+        <!-- 4 KPI Scorecards with Animated Bars -->
+        <div class="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          
+          <!-- Supported -->
+          <div onclick="filterByCard('Supported')" class="glass rounded-2xl p-4 border-t-2 border-emerald-500 spotlight-card cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-emerald-300 transition-colors">Supported</span>
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center border border-emerald-500/30">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span id="count-supported" class="text-3xl font-extrabold text-emerald-400">0</span>
+              <span id="pct-supported" class="text-xs font-mono text-emerald-500/80">0%</span>
+            </div>
+            <div class="mt-3 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div id="bar-supported" class="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-700" style="width: 0%"></div>
+            </div>
           </div>
-          <div class="glass rounded-2xl p-3 border-b-2 border-amber-500/60" id="kpi-card-weak">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Weakly Supp.</p>
-            <span class="text-2xl font-bold text-amber-400" id="count-weak">—</span>
+
+          <!-- Weakly Supported -->
+          <div onclick="filterByCard('Weakly Supported')" class="glass rounded-2xl p-4 border-t-2 border-amber-500 spotlight-card cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-amber-300 transition-colors">Weakly Supp.</span>
+              <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center border border-amber-500/30">
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span id="count-weak" class="text-3xl font-extrabold text-amber-400">0</span>
+              <span id="pct-weak" class="text-xs font-mono text-amber-500/80">0%</span>
+            </div>
+            <div class="mt-3 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div id="bar-weak" class="h-full bg-gradient-to-r from-amber-600 to-amber-400 transition-all duration-700" style="width: 0%"></div>
+            </div>
           </div>
-          <div class="glass rounded-2xl p-3 border-b-2 border-rose-500/60" id="kpi-card-mismatched">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Mismatched</p>
-            <span class="text-2xl font-bold text-rose-400" id="count-mismatched">—</span>
+
+          <!-- Mismatched -->
+          <div onclick="filterByCard('Mismatched')" class="glass rounded-2xl p-4 border-t-2 border-rose-500 spotlight-card cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-rose-300 transition-colors">Mismatched</span>
+              <div class="w-8 h-8 rounded-lg bg-rose-500/15 flex items-center justify-center border border-rose-500/30">
+                <i data-lucide="flame" class="w-4 h-4 text-rose-400"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span id="count-mismatched" class="text-3xl font-extrabold text-rose-400">0</span>
+              <span id="pct-mismatched" class="text-xs font-mono text-rose-500/80">0%</span>
+            </div>
+            <div class="mt-3 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div id="bar-mismatched" class="h-full bg-gradient-to-r from-rose-600 to-rose-400 transition-all duration-700" style="width: 0%"></div>
+            </div>
           </div>
-          <div class="glass rounded-2xl p-3 border-b-2 border-indigo-500/60" id="kpi-card-unverifiable">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Unverifiable</p>
-            <span class="text-2xl font-bold text-indigo-400" id="count-unverifiable">—</span>
+
+          <!-- Unverifiable -->
+          <div onclick="filterByCard('Unverifiable')" class="glass rounded-2xl p-4 border-t-2 border-indigo-500 spotlight-card cursor-pointer group">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-indigo-300 transition-colors">Unverifiable</span>
+              <div class="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center border border-indigo-500/30">
+                <i data-lucide="help-circle" class="w-4 h-4 text-indigo-400"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <span id="count-unverifiable" class="text-3xl font-extrabold text-indigo-400">0</span>
+              <span id="pct-unverifiable" class="text-xs font-mono text-indigo-500/80">0%</span>
+            </div>
+            <div class="mt-3 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+              <div id="bar-unverifiable" class="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 transition-all duration-700" style="width: 0%"></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ─── SCROLLABLE SPLIT-SCREEN INSPECTOR WORKSPACE ─── -->
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- LEFT COLUMN (5 Cols): Extracted Claims Feed + Heatmap -->
+        <div class="lg:col-span-5 glass rounded-3xl overflow-hidden flex flex-col border border-slate-800/90">
+          
+          <!-- Search & Filter Header -->
+          <div class="p-4 border-b border-slate-800/80 bg-slate-900/90 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
+                <i data-lucide="layers" class="w-4 h-4 text-indigo-400"></i> Extracted Claims Queue
+              </h3>
+              <span id="claims-count-badge" class="px-2.5 py-0.5 rounded-full bg-slate-800 text-indigo-300 text-xs font-mono font-semibold">0 claims</span>
+            </div>
+
+            <!-- Real-time Search Input -->
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3.5 top-2.5"></i>
+              <input type="text" id="search-claims" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-xl pl-10 pr-8 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all" placeholder="Filter by keyword, author, or citation (Press '/' to focus)..." />
+            </div>
+
+            <!-- All 5 Interactive Filter Pills -->
+            <div id="filter-section" class="flex flex-wrap gap-1.5 pt-1">
+              <button class="filter-pill active px-3 py-1 rounded-lg text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700" data-filter="all">
+                All <span id="filter-count-all" class="ml-1 opacity-75"></span>
+              </button>
+              <button class="filter-pill px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-950/50 text-emerald-300 border border-emerald-800/40" data-filter="Supported">
+                🟢 Supported <span id="filter-count-supported" class="ml-0.5 opacity-75"></span>
+              </button>
+              <button class="filter-pill px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-950/50 text-amber-300 border border-amber-800/40" data-filter="Weakly Supported">
+                🟡 Weak <span id="filter-count-weak" class="ml-0.5 opacity-75"></span>
+              </button>
+              <button class="filter-pill px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-950/50 text-rose-300 border border-rose-800/40" data-filter="Mismatched">
+                🔴 Mismatch <span id="filter-count-mismatched" class="ml-0.5 opacity-75"></span>
+              </button>
+              <button class="filter-pill px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-950/50 text-indigo-300 border border-indigo-800/40" data-filter="Unverifiable">
+                ⚪ Unverifiable <span id="filter-count-unverifiable" class="ml-0.5 opacity-75"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Scrollable Claims Feed + Right Heatmap Rail -->
+          <div class="flex relative max-h-[680px] min-h-[460px]">
+            <div id="claims-list" class="flex-1 overflow-y-auto p-4 space-y-3" tabindex="0">
+              <!-- Populated dynamically via JS -->
+            </div>
+            <!-- Document Health Density Heatmap -->
+            <div id="heatmap-track" class="w-4 bg-slate-950/80 border-l border-slate-800/80 relative shrink-0" title="Document Citation Heatmap"></div>
           </div>
         </div>
+
+        <!-- RIGHT COLUMN (7 Cols): Sticky Deep Evidence Inspector -->
+        <div class="lg:col-span-7 lg:sticky lg:top-20 glass rounded-3xl overflow-hidden border border-slate-800/90 flex flex-col min-h-[560px]">
+          
+          <!-- Inspector Header -->
+          <div class="px-6 py-4 border-b border-slate-800/80 bg-slate-900/90 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center">
+                <i data-lucide="microscope" class="w-4 h-4 text-purple-400"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-extrabold text-white">Deep Evidence Inspector</h3>
+                <p class="text-[11px] text-slate-400">Claim-to-source semantic alignment &amp; auto-remediation</p>
+              </div>
+            </div>
+
+            <!-- Standard vs Diff View Toggle + Prev/Next Buttons -->
+            <div class="flex items-center gap-2">
+              <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button id="toggle-view-standard" class="px-3 py-1 text-[11px] font-bold rounded-lg bg-indigo-600 text-white transition-all">Standard View</button>
+                <button id="toggle-view-diff" class="px-3 py-1 text-[11px] font-bold rounded-lg text-slate-400 hover:text-white transition-all">Word Diff View</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inspector Body -->
+          <div id="evidence-content" class="p-6 flex-1">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+
+      </section>
+    </div>
+
+    <!-- ─── TAB 2: BENCHMARK EVALUATION SUITE ─── -->
+    <div id="tab-benchmark" class="tab-content space-y-6">
+      <div class="glass rounded-3xl p-6 sm:p-8 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <span class="px-3 py-1 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 text-xs font-bold uppercase tracking-wider">Standardized NLI Evaluation</span>
+          <h2 class="text-2xl font-extrabold text-white mt-2">CiteGuard Golden Benchmark Suite</h2>
+          <p class="text-sm text-slate-400 mt-1">Evaluate precision, recall, and F1 accuracy across Supported, Weakly Supported, Mismatched, and Unverifiable ground-truth test cases.</p>
+        </div>
+        <button id="btn-run-benchmark" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-extrabold rounded-xl shadow-lg shadow-purple-500/25 flex items-center gap-2 transition-all hover:-translate-y-0.5 shrink-0">
+          <i data-lucide="play" class="w-4 h-4"></i> Execute Benchmark Suite
+        </button>
       </div>
 
-      <!-- Split-Screen Workspace -->
-      <div class="split-pane flex gap-4 flex-1 min-h-[400px] overflow-hidden">
-        
-        <!-- LEFT: Claims Panel -->
-        <div class="w-1/2 glass rounded-2xl flex flex-col overflow-hidden relative" id="claims-panel">
-          <div class="p-3 border-b border-slate-800/40 shrink-0 z-10 bg-slate-900/80 backdrop-blur-md">
-            <div class="flex flex-col xl:flex-row xl:items-center gap-3">
-              <div class="relative flex-1">
-                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2"></i>
-                <input type="text" id="search-claims" class="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-indigo-500 transition-all" placeholder="Search claims (Press '/' to focus)">
-              </div>
-              <div id="filter-section" class="flex flex-wrap gap-1.5">
-                <button class="filter-pill active px-2.5 py-1 rounded-md text-[10px] font-semibold bg-slate-800/60 text-slate-300 border border-slate-700/50" data-filter="all">All</button>
-                <button class="filter-pill px-2.5 py-1 rounded-md text-[10px] font-semibold bg-emerald-950/40 text-emerald-400 border border-emerald-800/30" data-filter="Supported">Supported</button>
-                <button class="filter-pill px-2.5 py-1 rounded-md text-[10px] font-semibold bg-rose-950/40 text-rose-400 border border-rose-800/30" data-filter="Mismatched">Mismatch</button>
-              </div>
-            </div>
+      <div id="benchmark-results" class="space-y-6">
+        <div id="benchmark-empty" class="glass rounded-3xl p-16 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="bar-chart-big" class="w-8 h-8 text-purple-400"></i>
           </div>
-          <div class="flex flex-1 overflow-hidden relative">
-            <div id="claims-list" class="flex-1 overflow-y-auto p-3 space-y-2 relative" tabindex="0">
-              <div id="claims-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-                <i data-lucide="file-search" class="w-8 h-8 text-slate-600 mb-2"></i>
-                <p class="text-xs text-slate-500">No claims extracted yet</p>
-              </div>
-            </div>
-            <div id="heatmap-track" class="w-4 border-l border-slate-800/50 bg-slate-900/30 relative shrink-0" title="Document Heatmap"></div>
-          </div>
-        </div>
-
-        <!-- RIGHT: Evidence Inspector -->
-        <div class="w-1/2 glass rounded-2xl flex flex-col overflow-hidden" id="evidence-panel">
-          <div class="px-4 py-3 border-b border-slate-800/40 flex items-center justify-between shrink-0 bg-slate-900/80 backdrop-blur-md">
-            <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2"><i data-lucide="git-compare" class="w-4 h-4 text-purple-400"></i> Evidence Inspector</h2>
-            <div class="flex items-center gap-2 bg-slate-950/50 p-1 rounded-lg border border-slate-800">
-              <button id="toggle-view-standard" class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-indigo-600 text-white transition-colors">Standard</button>
-              <button id="toggle-view-diff" class="px-2 py-1 text-[10px] font-bold uppercase rounded text-slate-400 hover:text-slate-200 transition-colors">Diff View</button>
-            </div>
-          </div>
-          <div id="evidence-content" class="flex-1 overflow-y-auto p-4 relative">
-            <div id="evidence-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-              <i data-lucide="mouse-pointer-click" class="w-8 h-8 text-slate-600 mb-2"></i>
-              <p class="text-xs text-slate-500">Select a claim to inspect</p>
-            </div>
-          </div>
+          <h3 class="text-base font-bold text-white">Ready to Run Evaluation</h3>
+          <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">Click "Execute Benchmark Suite" above to test the verification engine against the golden dataset.</p>
         </div>
       </div>
     </div>
+
+    <!-- ─── TAB 3: EXPORT AUDIT REPORT ─── -->
+    <div id="tab-export" class="tab-content space-y-6">
+      <div class="glass rounded-3xl p-6 sm:p-8 border border-emerald-500/20">
+        <h2 class="text-2xl font-extrabold text-white flex items-center gap-2.5">
+          <i data-lucide="file-check" class="w-6 h-6 text-emerald-400"></i> Compliance &amp; Audit Report Exporter
+        </h2>
+        <p class="text-sm text-slate-400 mt-1">Generate tamper-evident Markdown or JSON audit logs complete with source passages, confidence metrics, and AI rewrite suggestions.</p>
+
+        <div id="export-options" class="grid md:grid-cols-2 gap-4 mt-6">
+          <div id="btn-export-json" class="glass-light rounded-2xl p-5 hover:border-indigo-500/50 cursor-pointer transition-all group flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center shrink-0">
+              <i data-lucide="braces" class="w-6 h-6 text-indigo-400"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white group-hover:text-indigo-300">Download JSON Audit (.json)</h3>
+              <p class="text-xs text-slate-400 mt-1">Machine-readable payload for CI/CD pipelines and automated editorial workflows.</p>
+            </div>
+          </div>
+
+          <div id="btn-export-md" class="glass-light rounded-2xl p-5 hover:border-emerald-500/50 cursor-pointer transition-all group flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+              <i data-lucide="file-text" class="w-6 h-6 text-emerald-400"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white group-hover:text-emerald-300">Download Markdown Report (.md)</h3>
+              <p class="text-xs text-slate-400 mt-1">Formatted human-readable peer-review report with tables and AI rewrites.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Report Preview -->
+        <div id="export-preview" class="mt-6 rounded-2xl overflow-hidden border border-slate-800 bg-slate-950">
+          <div class="px-4 py-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-300 flex items-center gap-2"><i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i> Live Audit Markdown Preview</span>
+            <button id="btn-copy-export" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 flex items-center gap-1.5">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Report
+            </button>
+          </div>
+          <pre id="export-preview-content" class="p-5 text-xs font-mono text-slate-300 overflow-x-auto max-h-[420px] leading-relaxed"></pre>
+        </div>
+      </div>
+    </div>
+
   </main>
 
-  <div id="toast-container" class="fixed bottom-6 right-6 z-[300] flex flex-col gap-2"></div>
+  <!-- ═══════════════════ SAVED SESSIONS DRAWER ═══════════════════ -->
+  <div id="history-drawer" class="fixed right-0 top-16 bottom-0 w-80 glass border-l border-slate-700/70 z-50 translate-x-full shadow-2xl flex flex-col">
+    <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+      <h2 class="text-sm font-extrabold text-white flex items-center gap-2"><i data-lucide="history" class="w-4 h-4 text-purple-400"></i> Saved Audit Sessions</h2>
+      <button id="btn-close-history" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+  </div>
+
+  <!-- ═══════════════════ COMMAND PALETTE MODAL (⌘K) ═══════════════════ -->
+  <div id="cmd-palette-modal" class="hidden fixed inset-0 z-[250] flex items-start justify-center pt-[12vh] px-4">
+    <div class="absolute inset-0 modal-backdrop" id="cmd-palette-backdrop"></div>
+    <div class="relative w-full max-w-xl glass border border-indigo-500/40 rounded-2xl shadow-2xl overflow-hidden animate-scale-in bg-slate-900/95">
+      <div class="flex items-center px-4 py-3.5 border-b border-slate-800">
+        <i data-lucide="search" class="w-5 h-5 text-indigo-400 mr-3"></i>
+        <input type="text" id="cmd-palette-input" class="flex-1 bg-transparent border-none text-white placeholder-slate-500 focus:outline-none text-sm font-medium" placeholder="Type a command (e.g., 'Filter Mismatched', 'Run Benchmark', 'Export')..." autocomplete="off" />
+        <kbd class="kbd">ESC</kbd>
+      </div>
+      <div class="max-h-[50vh] overflow-y-auto p-2 space-y-1" id="cmd-palette-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ FLOATING HOTKEY PILL ═══════════════════ -->
+  <div id="floating-hotkeys" class="fixed bottom-5 right-5 z-40 glass px-3.5 py-2 rounded-2xl shadow-xl border border-slate-700/80 flex items-center gap-3 text-xs">
+    <div class="flex items-center gap-1.5">
+      <kbd class="kbd">J</kbd><kbd class="kbd">K</kbd>
+      <span class="text-[11px] font-semibold text-slate-300 ml-1">Cycle Claims</span>
+    </div>
+    <div class="h-3 w-px bg-slate-700"></div>
+    <div class="flex items-center gap-1.5">
+      <kbd class="kbd">/</kbd>
+      <span class="text-[11px] font-semibold text-slate-300">Search</span>
+    </div>
+    <div class="h-3 w-px bg-slate-700"></div>
+    <button onclick="openCommandPalette()" class="flex items-center gap-1.5 hover:text-indigo-300 transition-colors">
+      <kbd class="kbd">⌘K</kbd>
+      <span class="text-[11px] font-semibold text-slate-300">Palette</span>
+    </button>
+  </div>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loading-overlay" class="hidden fixed inset-0 z-[300] modal-backdrop flex items-center justify-center">
+    <div class="glass p-8 rounded-3xl border border-indigo-500/30 text-center max-w-sm animate-scale-in">
+      <div class="relative w-16 h-16 mx-auto mb-4">
+        <div class="absolute inset-0 rounded-full border-4 border-slate-800"></div>
+        <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 border-r-purple-500 animate-spin"></div>
+        <i data-lucide="shield-check" class="absolute inset-0 m-auto w-6 h-6 text-indigo-400"></i>
+      </div>
+      <p id="loading-text" class="text-sm font-bold text-white">Verifying Citations…</p>
+      <p class="text-xs text-slate-400 mt-1">Cross-referencing claims against source passages</p>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="fixed bottom-16 right-5 z-[350] flex flex-col gap-2"></div>
+
   <script src="app.js"></script>
 </body>
 </html>
