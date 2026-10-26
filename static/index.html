@@ -16,31 +16,24 @@
   <header class="sticky top-0 z-50 glass border-b border-slate-800/50 shrink-0">
     <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16">
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 w-1/4">
           <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
           </div>
           <div>
-            <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-400 bg-clip-text text-transparent">
-              CiteGuard AI
-            </h1>
-            <p class="text-[10px] text-slate-500 -mt-0.5 tracking-wider uppercase font-medium">Citation Verifier</p>
+            <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-300 via-purple-300 to-indigo-400 bg-clip-text text-transparent">CiteGuard AI</h1>
           </div>
         </div>
 
-        <nav id="tab-nav" class="hidden sm:flex items-center gap-1 bg-slate-900/40 rounded-xl p-1 border border-slate-800/40">
-          <button class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 flex items-center gap-2" data-tab="inspector">
-            <i data-lucide="scan-search" class="w-4 h-4"></i> Inspector
+        <!-- Central Command Trigger -->
+        <div class="hidden md:flex flex-1 justify-center">
+          <button id="btn-open-palette-nav" class="flex items-center justify-between w-64 px-3 py-1.5 bg-slate-900/50 hover:bg-slate-800 border border-slate-700/60 hover:border-indigo-500/50 rounded-lg transition-all text-sm text-slate-400 group">
+            <span class="flex items-center gap-2"><i data-lucide="search" class="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-colors"></i> Search Actions...</span>
+            <div class="flex gap-1"><kbd class="kbd text-[10px] px-1 py-0 shadow-none transform-none">⌘</kbd><kbd class="kbd text-[10px] px-1 py-0 shadow-none transform-none">K</kbd></div>
           </button>
-          <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 flex items-center gap-2" data-tab="benchmark">
-            <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Benchmark
-          </button>
-          <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 flex items-center gap-2" data-tab="export">
-            <i data-lucide="download" class="w-4 h-4"></i> Export
-          </button>
-        </nav>
+        </div>
 
-        <div class="flex items-center gap-4 text-xs text-slate-500">
+        <div class="flex items-center justify-end gap-4 text-xs text-slate-500 w-1/4">
           <button id="btn-toggle-history" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors">
             <i data-lucide="history" class="w-3.5 h-3.5"></i> Sessions
           </button>
@@ -59,8 +52,52 @@
       <button id="btn-close-history" class="text-slate-400 hover:text-white transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
     <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3">
-      <!-- History items dynamically injected here -->
       <div class="text-center text-slate-500 text-xs py-10">No saved sessions yet.</div>
+    </div>
+  </div>
+
+  <!-- COMMAND PALETTE MODAL (⌘K) -->
+  <div id="cmd-palette-modal" class="hidden fixed inset-0 z-[250] flex items-start justify-center pt-[10vh]">
+    <div class="absolute inset-0 modal-backdrop" id="cmd-palette-backdrop"></div>
+    <div class="relative w-full max-w-2xl glass-light border border-slate-700 rounded-2xl shadow-2xl overflow-hidden animate-scale-in flex flex-col bg-slate-900/90">
+      <div class="flex items-center px-4 py-3 border-b border-slate-700/60 bg-slate-900/50">
+        <i data-lucide="search" class="w-5 h-5 text-indigo-400 mr-3"></i>
+        <input type="text" id="cmd-palette-input" class="flex-1 bg-transparent border-none text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-0 text-lg" placeholder="Type a command or search..." autocomplete="off">
+        <kbd class="kbd shadow-none transform-none text-[10px]">ESC</kbd>
+      </div>
+      <div class="max-h-[60vh] overflow-y-auto p-2" id="cmd-palette-list">
+        <!-- Command items injected via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- KEYMAP LEGEND MODAL -->
+  <div id="keymap-modal" class="hidden fixed inset-0 z-[250] flex items-center justify-center">
+    <div class="absolute inset-0 modal-backdrop" id="keymap-backdrop"></div>
+    <div class="relative w-full max-w-md glass rounded-2xl border border-slate-700 p-6 animate-scale-in shadow-2xl">
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/50">
+        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2"><i data-lucide="keyboard" class="w-5 h-5 text-indigo-400"></i> Keyboard Shortcuts</h2>
+        <button id="btn-close-keymap" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Command Palette</span><div class="flex gap-1"><kbd class="kbd">Ctrl/⌘</kbd><kbd class="kbd">K</kbd></div></div>
+        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Next Claim</span><div class="flex gap-1"><kbd class="kbd">J</kbd> or <kbd class="kbd">↓</kbd></div></div>
+        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Previous Claim</span><div class="flex gap-1"><kbd class="kbd">K</kbd> or <kbd class="kbd">↑</kbd></div></div>
+        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Search Claims</span><div class="flex gap-1"><kbd class="kbd">/</kbd></div></div>
+        <div class="flex items-center justify-between"><span class="text-sm text-slate-300">Reset/Close</span><div class="flex gap-1"><kbd class="kbd">Esc</kbd></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING HOTKEY LEGEND BAR -->
+  <div id="floating-hotkeys" class="fixed bottom-6 right-6 z-[150] glass px-3 py-2 rounded-xl shadow-lg border border-slate-700/60 flex items-center gap-3 cursor-pointer hover:bg-slate-800/80 transition-all hover:scale-105 group">
+    <div class="flex items-center gap-1.5 border-r border-slate-700 pr-3">
+      <kbd class="kbd group-hover:border-indigo-500/50 transition-colors text-[10px]">J</kbd> / <kbd class="kbd group-hover:border-indigo-500/50 transition-colors text-[10px]">K</kbd>
+      <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Navigate</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <div class="flex gap-0.5"><kbd class="kbd group-hover:border-indigo-500/50 transition-colors text-[10px]">⌘</kbd><kbd class="kbd group-hover:border-indigo-500/50 transition-colors text-[10px]">K</kbd></div>
+      <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider ml-1">Palette</span>
     </div>
   </div>
 
@@ -78,7 +115,7 @@
       </div>
     </div>
 
-    <!-- TAB 1: INSPECTOR -->
+    <!-- MAIN TAB CONTAINER -->
     <div id="tab-inspector" class="tab-content active h-full flex-col min-h-0">
       
       <!-- Top Action Bar -->
@@ -115,10 +152,9 @@
         </div>
       </div>
 
-      <!-- KPI & Health Score Layout -->
+      <!-- KPI & Health Score -->
       <div id="kpi-section" class="flex flex-col lg:flex-row gap-4 mb-4 shrink-0">
-        
-        <!-- Document Health Score Gauge -->
+        <!-- Health Score -->
         <div class="glass rounded-2xl p-4 lg:w-1/3 flex items-center gap-4">
           <div class="relative w-20 h-20 shrink-0">
             <svg class="w-full h-full -rotate-90" viewBox="0 0 80 80">
@@ -136,7 +172,7 @@
           </div>
         </div>
 
-        <!-- Metric Cards -->
+        <!-- Stats -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
           <div class="glass rounded-2xl p-3 border-b-2 border-emerald-500/60" id="kpi-card-supported">
             <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Supported</p>
@@ -160,14 +196,13 @@
       <!-- Split-Screen Workspace -->
       <div class="split-pane flex gap-4 flex-1 min-h-[400px] overflow-hidden">
         
-        <!-- LEFT: Claims Panel with Mini-Map -->
+        <!-- LEFT: Claims Panel -->
         <div class="w-1/2 glass rounded-2xl flex flex-col overflow-hidden relative" id="claims-panel">
           <div class="p-3 border-b border-slate-800/40 shrink-0 z-10 bg-slate-900/80 backdrop-blur-md">
-            <!-- Search & Filter inline -->
             <div class="flex flex-col xl:flex-row xl:items-center gap-3">
               <div class="relative flex-1">
                 <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2"></i>
-                <input type="text" id="search-claims" class="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-indigo-500 transition-all" placeholder="Search claims (Type '/' to focus)">
+                <input type="text" id="search-claims" class="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-indigo-500 transition-all" placeholder="Search claims (Press '/' to focus)">
               </div>
               <div id="filter-section" class="flex flex-wrap gap-1.5">
                 <button class="filter-pill active px-2.5 py-1 rounded-md text-[10px] font-semibold bg-slate-800/60 text-slate-300 border border-slate-700/50" data-filter="all">All</button>
@@ -176,28 +211,21 @@
               </div>
             </div>
           </div>
-
           <div class="flex flex-1 overflow-hidden relative">
-            <!-- Main Scrollable List -->
             <div id="claims-list" class="flex-1 overflow-y-auto p-3 space-y-2 relative" tabindex="0">
               <div id="claims-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
                 <i data-lucide="file-search" class="w-8 h-8 text-slate-600 mb-2"></i>
                 <p class="text-xs text-slate-500">No claims extracted yet</p>
               </div>
             </div>
-            <!-- Document Heatmap / Mini-Map -->
-            <div id="heatmap-track" class="w-4 border-l border-slate-800/50 bg-slate-900/30 relative shrink-0" title="Document Heatmap">
-              <!-- Heatmap ticks injected via JS -->
-            </div>
+            <div id="heatmap-track" class="w-4 border-l border-slate-800/50 bg-slate-900/30 relative shrink-0" title="Document Heatmap"></div>
           </div>
         </div>
 
-        <!-- RIGHT: Evidence Comparison -->
+        <!-- RIGHT: Evidence Inspector -->
         <div class="w-1/2 glass rounded-2xl flex flex-col overflow-hidden" id="evidence-panel">
           <div class="px-4 py-3 border-b border-slate-800/40 flex items-center justify-between shrink-0 bg-slate-900/80 backdrop-blur-md">
             <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2"><i data-lucide="git-compare" class="w-4 h-4 text-purple-400"></i> Evidence Inspector</h2>
-            
-            <!-- Side-by-Side Diff Toggle -->
             <div class="flex items-center gap-2 bg-slate-950/50 p-1 rounded-lg border border-slate-800">
               <button id="toggle-view-standard" class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-indigo-600 text-white transition-colors">Standard</button>
               <button id="toggle-view-diff" class="px-2 py-1 text-[10px] font-bold uppercase rounded text-slate-400 hover:text-slate-200 transition-colors">Diff View</button>
@@ -211,45 +239,10 @@
           </div>
         </div>
       </div>
-
-      <!-- Keyboard Shortcuts Legend Footer -->
-      <div class="mt-3 py-2 px-4 glass rounded-xl flex items-center gap-6 text-[10px] font-mono text-slate-500 shrink-0">
-        <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">J</kbd> / <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">K</kbd> Navigate Claims</span>
-        <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">/</kbd> Search</span>
-        <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">Esc</kbd> Reset Filters</span>
-      </div>
     </div>
-
-    <!-- TAB 2: BENCHMARK -->
-    <div id="tab-benchmark" class="tab-content h-full flex-col overflow-y-auto">
-      <div class="glass rounded-2xl p-6 flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2"><i data-lucide="flask-conical" class="w-5 h-5 text-purple-400"></i> Benchmark Suite</h2>
-        <button id="btn-run-benchmark" class="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-semibold rounded-xl">Run Benchmark</button>
-      </div>
-      <div id="benchmark-results"><div class="glass rounded-2xl p-12 text-center text-slate-400">No benchmark run yet.</div></div>
-    </div>
-
-    <!-- TAB 3: EXPORT -->
-    <div id="tab-export" class="tab-content h-full flex-col overflow-y-auto">
-      <div class="glass rounded-2xl p-6 mb-6">
-        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2"><i data-lucide="file-down" class="w-5 h-5 text-emerald-400"></i> Export Audit Report</h2>
-      </div>
-      <div id="export-content">
-        <div id="export-empty" class="glass rounded-2xl p-12 text-center text-slate-400">No verification data to export.</div>
-        <div id="export-options" class="hidden grid md:grid-cols-2 gap-4">
-          <div class="glass rounded-2xl p-6 cursor-pointer hover:border-indigo-500/50" id="btn-export-json">
-            <h3 class="text-base font-semibold text-slate-200">Download JSON (.json)</h3>
-          </div>
-          <div class="glass rounded-2xl p-6 cursor-pointer hover:border-emerald-500/50" id="btn-export-md">
-            <h3 class="text-base font-semibold text-slate-200">Download Markdown (.md)</h3>
-          </div>
-        </div>
-      </div>
-    </div>
-
   </main>
 
-  <div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2"></div>
+  <div id="toast-container" class="fixed bottom-6 right-6 z-[300] flex flex-col gap-2"></div>
   <script src="app.js"></script>
 </body>
 </html>
