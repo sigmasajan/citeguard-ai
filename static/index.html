@@ -3,20 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CiteGuard AI — Claim-to-Source Citation Verifier</title>
-  
-  <!-- Tailwind CSS CDN -->
+  <title>CiteGuard AI — Citation Verifier</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="style.css" />
-
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 
@@ -42,9 +32,6 @@
           <button class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 flex items-center gap-2" data-tab="inspector">
             <i data-lucide="scan-search" class="w-4 h-4"></i> Inspector
           </button>
-          <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 flex items-center gap-2" data-tab="history" id="tab-btn-history">
-            <i data-lucide="history" class="w-4 h-4"></i> History
-          </button>
           <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 flex items-center gap-2" data-tab="benchmark">
             <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Benchmark
           </button>
@@ -53,45 +40,33 @@
           </button>
         </nav>
 
-        <div class="flex items-center gap-3">
-          <!-- Auth Section -->
-          <div id="auth-nav-container" class="flex items-center gap-2">
-            <button id="btn-open-auth" class="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-semibold transition-all">
-              <i data-lucide="user" class="w-3.5 h-3.5"></i>
-              <span>Sign In</span>
-            </button>
-
-            <div id="user-pill" class="hidden items-center gap-2">
-              <div class="flex items-center gap-2 px-3 py-1 glass-light rounded-xl border border-slate-700/60">
-                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
-                  <span id="user-avatar-initial">U</span>
-                </div>
-                <span id="user-display-name" class="text-xs font-medium text-slate-200 max-w-[110px] truncate">User</span>
-              </div>
-              <button id="btn-logout" class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800/60 rounded-xl transition-colors" data-tooltip="Sign Out" title="Sign Out">
-                <i data-lucide="log-out" class="w-4 h-4"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="hidden md:flex items-center gap-3 text-xs text-slate-500 border-l border-slate-800/60 pl-3">
-            <div id="mock-badge" class="hidden px-2 py-0.5 bg-amber-950/50 text-amber-400 border border-amber-800/50 rounded-md font-medium flex items-center gap-1">
-              <i data-lucide="wifi-off" class="w-3 h-3"></i> Mock Mode
-            </div>
-            <div class="flex items-center gap-2">
-              <span id="api-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-soft"></span>
-              <span id="api-status">Connecting...</span>
-            </div>
+        <div class="flex items-center gap-4 text-xs text-slate-500">
+          <button id="btn-toggle-history" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors">
+            <i data-lucide="history" class="w-3.5 h-3.5"></i> Sessions
+          </button>
+          <div id="mock-badge" class="hidden px-2 py-0.5 bg-amber-950/50 text-amber-400 border border-amber-800/50 rounded-md font-medium items-center gap-1">
+            <i data-lucide="wifi-off" class="w-3 h-3"></i> Mock Mode
           </div>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main class="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col min-h-0">
+  <!-- SAVED SESSIONS DRAWER -->
+  <div id="history-drawer" class="fixed right-0 top-16 bottom-0 w-80 glass border-l border-slate-700/50 z-40 translate-x-full shadow-2xl flex flex-col">
+    <div class="p-4 border-b border-slate-700/50 flex items-center justify-between bg-slate-900/80">
+      <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2"><i data-lucide="history" class="w-4 h-4"></i> Verification History</h2>
+      <button id="btn-close-history" class="text-slate-400 hover:text-white transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3">
+      <!-- History items dynamically injected here -->
+      <div class="text-center text-slate-500 text-xs py-10">No saved sessions yet.</div>
+    </div>
+  </div>
 
-    <!-- LOADING OVERLAY -->
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col min-h-0 relative">
+
     <div id="loading-overlay" class="hidden fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center">
       <div class="text-center animate-fade-in">
         <div class="relative w-16 h-16 mx-auto mb-4">
@@ -99,322 +74,182 @@
           <div class="absolute inset-0 rounded-full border-2 border-transparent border-t-indigo-500 animate-spin"></div>
           <i data-lucide="shield-check" class="absolute inset-0 m-auto w-6 h-6 text-indigo-400 animate-pulse-soft"></i>
         </div>
-        <p id="loading-text" class="text-sm text-slate-300 font-medium">Verifying citations…</p>
+        <p id="loading-text" class="text-sm text-slate-300 font-medium">Processing…</p>
       </div>
     </div>
 
     <!-- TAB 1: INSPECTOR -->
-    <div id="tab-inspector" class="tab-content active h-full flex-col">
-      <!-- Action Bar (Top) -->
-      <div class="glass rounded-2xl p-4 mb-4 shrink-0 animate-slide-up flex flex-col gap-4">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div class="flex items-center gap-3 w-full sm:w-auto">
-            <button id="btn-load-demo" class="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:translate-y-0">
-              <i data-lucide="flask-conical" class="w-4 h-4 group-hover:rotate-12 transition-transform"></i>
-              Load Demo Paper
+    <div id="tab-inspector" class="tab-content active h-full flex-col min-h-0">
+      
+      <!-- Top Action Bar -->
+      <div class="glass rounded-2xl p-4 mb-4 shrink-0 flex flex-col gap-4 z-10 relative">
+        <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3 w-full lg:w-auto">
+            <button id="btn-load-demo" class="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold rounded-xl shadow-lg transition-all">
+              <i data-lucide="flask-conical" class="w-4 h-4"></i> Demo
             </button>
-            <div class="hidden sm:block w-px h-8 bg-slate-700/50"></div>
-            <label class="group flex items-center gap-2 px-4 py-2.5 glass-light rounded-xl cursor-pointer hover:bg-slate-700/40 transition-all text-sm text-slate-300">
-              <i data-lucide="file-up" class="w-4 h-4 text-slate-400 group-hover:text-indigo-400 transition-colors"></i>
-              <span id="file-label">Upload PDF/Txt</span>
-              <input type="file" id="file-input" accept=".pdf,.txt,.text" class="hidden" />
+            <label class="flex items-center justify-center gap-2 px-4 py-2 glass-light rounded-xl cursor-pointer hover:bg-slate-700/40 text-sm text-slate-300 transition-all flex-1 lg:flex-none">
+              <i data-lucide="file-up" class="w-4 h-4"></i> <span id="file-label">Upload PDF</span>
+              <input type="file" id="file-input" accept=".pdf,.txt" class="hidden" />
             </label>
           </div>
-          <button id="btn-verify" disabled class="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-500/10 transition-all disabled:shadow-none">
-            <i data-lucide="search-check" class="w-4 h-4"></i>
-            Verify Citations
-          </button>
-        </div>
-
-        <!-- DOI/ArXiv Link Input -->
-        <div class="flex flex-col sm:flex-row gap-3 pt-3 border-t border-slate-700/40">
-          <div class="relative flex-1">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <i data-lucide="link" class="w-4 h-4 text-slate-500"></i>
-            </div>
-            <input type="text" id="url-input" class="w-full bg-slate-900/50 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="Paste arXiv URL or DOI (e.g., https://arxiv.org/abs/2301.00000)">
+          
+          <div class="flex items-center gap-2 w-full lg:w-1/2 relative">
+            <i data-lucide="link" class="w-4 h-4 text-slate-500 absolute left-3"></i>
+            <input type="text" id="url-input" class="w-full bg-slate-900/50 border border-slate-700 rounded-xl pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:border-indigo-500 transition-all" placeholder="Paste arXiv URL or DOI...">
+            <button id="btn-fetch-url" class="absolute right-1 top-1 bottom-1 px-3 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-lg text-slate-200 transition-colors">Fetch</button>
           </div>
-          <button id="btn-fetch-url" class="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold rounded-xl border border-slate-700 transition-colors shadow-sm whitespace-nowrap">
-            <i data-lucide="cloud-download" class="w-4 h-4"></i> Fetch & Verify
+
+          <button id="btn-verify" disabled class="w-full lg:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white text-sm font-semibold rounded-xl shadow-lg transition-all">
+            <i data-lucide="search-check" class="w-4 h-4"></i> Verify
           </button>
         </div>
 
-        <div id="doc-indicator" class="hidden pt-3 border-t border-slate-700/40">
-          <div class="flex items-center gap-2 text-xs">
+        <div id="doc-indicator" class="hidden pt-2 border-t border-slate-700/40 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
             <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400"></i>
             <span class="text-slate-400">Loaded:</span>
-            <span id="doc-title" class="text-slate-300 font-medium truncate"></span>
-            <button id="btn-clear-doc" class="ml-auto text-slate-500 hover:text-rose-400 transition-colors" title="Clear document">
-              <i data-lucide="x" class="w-3.5 h-3.5"></i>
-            </button>
+            <span id="doc-title" class="text-slate-300 font-medium truncate max-w-sm"></span>
+          </div>
+          <button id="btn-clear-doc" class="text-slate-500 hover:text-rose-400 flex items-center gap-1"><i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Clear</button>
+        </div>
+      </div>
+
+      <!-- KPI & Health Score Layout -->
+      <div id="kpi-section" class="flex flex-col lg:flex-row gap-4 mb-4 shrink-0">
+        
+        <!-- Document Health Score Gauge -->
+        <div class="glass rounded-2xl p-4 lg:w-1/3 flex items-center gap-4">
+          <div class="relative w-20 h-20 shrink-0">
+            <svg class="w-full h-full -rotate-90" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="36" fill="none" stroke="currentColor" class="text-slate-800" stroke-width="6" />
+              <circle id="health-ring" cx="40" cy="40" r="36" fill="none" stroke="#4ade80" stroke-width="6" stroke-dasharray="226" stroke-dashoffset="226" stroke-linecap="round" class="score-ring" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span id="health-score-val" class="text-xl font-bold text-white">—</span>
+            </div>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-slate-200">Citation Health</h3>
+            <p id="health-score-grade" class="text-xs font-mono text-slate-400 mt-0.5">Grade: N/A</p>
+            <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Overall Integrity</p>
+          </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
+          <div class="glass rounded-2xl p-3 border-b-2 border-emerald-500/60" id="kpi-card-supported">
+            <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Supported</p>
+            <span class="text-2xl font-bold text-emerald-400" id="count-supported">—</span>
+          </div>
+          <div class="glass rounded-2xl p-3 border-b-2 border-amber-500/60" id="kpi-card-weak">
+            <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Weakly Supp.</p>
+            <span class="text-2xl font-bold text-amber-400" id="count-weak">—</span>
+          </div>
+          <div class="glass rounded-2xl p-3 border-b-2 border-rose-500/60" id="kpi-card-mismatched">
+            <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Mismatched</p>
+            <span class="text-2xl font-bold text-rose-400" id="count-mismatched">—</span>
+          </div>
+          <div class="glass rounded-2xl p-3 border-b-2 border-indigo-500/60" id="kpi-card-unverifiable">
+            <p class="text-[10px] text-slate-400 uppercase tracking-wider mb-1">Unverifiable</p>
+            <span class="text-2xl font-bold text-indigo-400" id="count-unverifiable">—</span>
           </div>
         </div>
       </div>
 
-      <!-- Split-Screen Inspector -->
-      <div class="split-pane flex gap-4 flex-1 min-h-[500px] overflow-hidden pb-4">
+      <!-- Split-Screen Workspace -->
+      <div class="split-pane flex gap-4 flex-1 min-h-[400px] overflow-hidden">
         
-        <!-- LEFT: Claims Panel (Search + Filters + List) -->
-        <div class="w-1/2 glass rounded-2xl flex flex-col overflow-hidden" id="claims-panel">
-          <div class="px-4 py-3 border-b border-slate-800/40 shrink-0">
-            <div class="flex items-center gap-2 mb-3">
-              <i data-lucide="list" class="w-4 h-4 text-indigo-400"></i>
-              <h2 class="text-sm font-semibold text-slate-300">Extracted Claims</h2>
-              <span id="claims-count-badge" class="ml-auto text-xs text-slate-500 font-mono"></span>
-            </div>
-            
-            <!-- Real-time Search Input -->
-            <div class="relative mb-3">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i data-lucide="search" class="w-4 h-4 text-slate-500"></i>
+        <!-- LEFT: Claims Panel with Mini-Map -->
+        <div class="w-1/2 glass rounded-2xl flex flex-col overflow-hidden relative" id="claims-panel">
+          <div class="p-3 border-b border-slate-800/40 shrink-0 z-10 bg-slate-900/80 backdrop-blur-md">
+            <!-- Search & Filter inline -->
+            <div class="flex flex-col xl:flex-row xl:items-center gap-3">
+              <div class="relative flex-1">
+                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2"></i>
+                <input type="text" id="search-claims" class="w-full bg-slate-950/50 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-indigo-500 transition-all" placeholder="Search claims (Type '/' to focus)">
               </div>
-              <input type="text" id="search-claims" class="w-full bg-slate-900/60 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all shadow-inner" placeholder="Search claims by keywords or phrases...">
-            </div>
-
-            <!-- Filter Pills -->
-            <div id="filter-section" class="flex flex-wrap gap-2 animate-slide-up">
-              <button class="filter-pill active px-3 py-1 rounded-full text-xs font-semibold bg-slate-800/60 text-slate-300 border border-slate-700/50" data-filter="all">
-                All <span id="filter-count-all" class="ml-1 text-slate-500"></span>
-              </button>
-              <button class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/40 text-emerald-400 border border-emerald-800/30" data-filter="Supported">
-                🟢 Supported <span id="filter-count-supported" class="ml-1 text-emerald-600"></span>
-              </button>
-              <button class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-amber-950/40 text-amber-400 border border-amber-800/30" data-filter="Weakly Supported">
-                🟡 Weakly <span id="filter-count-weak" class="ml-1 text-amber-600"></span>
-              </button>
-              <button class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-rose-950/40 text-rose-400 border border-rose-800/30" data-filter="Mismatched">
-                🔴 Mismatched <span id="filter-count-mismatched" class="ml-1 text-rose-600"></span>
-              </button>
-              <button class="filter-pill px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/40 text-indigo-400 border border-indigo-800/30" data-filter="Unverifiable">
-                ⚪ Unverifiable <span id="filter-count-unverifiable" class="ml-1 text-indigo-600"></span>
-              </button>
+              <div id="filter-section" class="flex flex-wrap gap-1.5">
+                <button class="filter-pill active px-2.5 py-1 rounded-md text-[10px] font-semibold bg-slate-800/60 text-slate-300 border border-slate-700/50" data-filter="all">All</button>
+                <button class="filter-pill px-2.5 py-1 rounded-md text-[10px] font-semibold bg-emerald-950/40 text-emerald-400 border border-emerald-800/30" data-filter="Supported">Supported</button>
+                <button class="filter-pill px-2.5 py-1 rounded-md text-[10px] font-semibold bg-rose-950/40 text-rose-400 border border-rose-800/30" data-filter="Mismatched">Mismatch</button>
+              </div>
             </div>
           </div>
 
-          <!-- Scrollable Claims List -->
-          <div id="claims-list" class="flex-1 overflow-y-auto p-3 space-y-3 relative" tabindex="0">
-            <div id="claims-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-              <div class="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mb-4">
-                <i data-lucide="file-search" class="w-8 h-8 text-slate-600"></i>
+          <div class="flex flex-1 overflow-hidden relative">
+            <!-- Main Scrollable List -->
+            <div id="claims-list" class="flex-1 overflow-y-auto p-3 space-y-2 relative" tabindex="0">
+              <div id="claims-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+                <i data-lucide="file-search" class="w-8 h-8 text-slate-600 mb-2"></i>
+                <p class="text-xs text-slate-500">No claims extracted yet</p>
               </div>
-              <p class="text-sm text-slate-500 font-medium">No claims extracted yet</p>
-              <p class="text-xs text-slate-600 mt-1 max-w-xs">Load a demo paper or upload a document to begin analysis</p>
+            </div>
+            <!-- Document Heatmap / Mini-Map -->
+            <div id="heatmap-track" class="w-4 border-l border-slate-800/50 bg-slate-900/30 relative shrink-0" title="Document Heatmap">
+              <!-- Heatmap ticks injected via JS -->
             </div>
           </div>
         </div>
 
-        <!-- RIGHT: Evidence Comparison Inspector -->
+        <!-- RIGHT: Evidence Comparison -->
         <div class="w-1/2 glass rounded-2xl flex flex-col overflow-hidden" id="evidence-panel">
-          <div class="px-4 py-3 border-b border-slate-800/40 flex items-center gap-2 shrink-0">
-            <i data-lucide="git-compare" class="w-4 h-4 text-purple-400"></i>
-            <h2 class="text-sm font-semibold text-slate-300">Evidence Comparison</h2>
+          <div class="px-4 py-3 border-b border-slate-800/40 flex items-center justify-between shrink-0 bg-slate-900/80 backdrop-blur-md">
+            <h2 class="text-sm font-semibold text-slate-300 flex items-center gap-2"><i data-lucide="git-compare" class="w-4 h-4 text-purple-400"></i> Evidence Inspector</h2>
+            
+            <!-- Side-by-Side Diff Toggle -->
+            <div class="flex items-center gap-2 bg-slate-950/50 p-1 rounded-lg border border-slate-800">
+              <button id="toggle-view-standard" class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-indigo-600 text-white transition-colors">Standard</button>
+              <button id="toggle-view-diff" class="px-2 py-1 text-[10px] font-bold uppercase rounded text-slate-400 hover:text-slate-200 transition-colors">Diff View</button>
+            </div>
           </div>
           <div id="evidence-content" class="flex-1 overflow-y-auto p-4 relative">
             <div id="evidence-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
-              <div class="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mb-4">
-                <i data-lucide="mouse-pointer-click" class="w-8 h-8 text-slate-600"></i>
-              </div>
-              <p class="text-sm text-slate-500 font-medium">Select a claim to inspect</p>
-              <p class="text-xs text-slate-600 mt-1 max-w-[250px]">Click any claim on the left to view the evidence comparison and AI diagnosis</p>
+              <i data-lucide="mouse-pointer-click" class="w-8 h-8 text-slate-600 mb-2"></i>
+              <p class="text-xs text-slate-500">Select a claim to inspect</p>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keyboard Shortcuts Legend Footer -->
+      <div class="mt-3 py-2 px-4 glass rounded-xl flex items-center gap-6 text-[10px] font-mono text-slate-500 shrink-0">
+        <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">J</kbd> / <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">K</kbd> Navigate Claims</span>
+        <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">/</kbd> Search</span>
+        <span class="flex items-center gap-1.5"><kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">Esc</kbd> Reset Filters</span>
+      </div>
+    </div>
+
+    <!-- TAB 2: BENCHMARK -->
+    <div id="tab-benchmark" class="tab-content h-full flex-col overflow-y-auto">
+      <div class="glass rounded-2xl p-6 flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2"><i data-lucide="flask-conical" class="w-5 h-5 text-purple-400"></i> Benchmark Suite</h2>
+        <button id="btn-run-benchmark" class="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-sm font-semibold rounded-xl">Run Benchmark</button>
+      </div>
+      <div id="benchmark-results"><div class="glass rounded-2xl p-12 text-center text-slate-400">No benchmark run yet.</div></div>
+    </div>
+
+    <!-- TAB 3: EXPORT -->
+    <div id="tab-export" class="tab-content h-full flex-col overflow-y-auto">
+      <div class="glass rounded-2xl p-6 mb-6">
+        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2"><i data-lucide="file-down" class="w-5 h-5 text-emerald-400"></i> Export Audit Report</h2>
+      </div>
+      <div id="export-content">
+        <div id="export-empty" class="glass rounded-2xl p-12 text-center text-slate-400">No verification data to export.</div>
+        <div id="export-options" class="hidden grid md:grid-cols-2 gap-4">
+          <div class="glass rounded-2xl p-6 cursor-pointer hover:border-indigo-500/50" id="btn-export-json">
+            <h3 class="text-base font-semibold text-slate-200">Download JSON (.json)</h3>
+          </div>
+          <div class="glass rounded-2xl p-6 cursor-pointer hover:border-emerald-500/50" id="btn-export-md">
+            <h3 class="text-base font-semibold text-slate-200">Download Markdown (.md)</h3>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- TAB 2: BENCHMARK SUITE -->
-    <div id="tab-benchmark" class="tab-content h-full flex-col overflow-y-auto pb-6">
-      <div class="animate-slide-up">
-        <div class="glass rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-              <i data-lucide="flask-conical" class="w-5 h-5 text-purple-400"></i> Evaluation Suite
-            </h2>
-            <p class="text-sm text-slate-400 mt-1">Run the golden test suite against the CiteGuard AI verifier engine</p>
-          </div>
-          <button id="btn-run-benchmark" class="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl shadow-lg transition-all active:translate-y-0">
-            <i data-lucide="play" class="w-4 h-4"></i> Run Benchmark
-          </button>
-        </div>
-        <div id="benchmark-results" class="space-y-6">
-          <div id="benchmark-empty" class="glass rounded-2xl p-12 text-center">
-            <div class="w-20 h-20 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
-              <i data-lucide="test-tubes" class="w-10 h-10 text-slate-600"></i>
-            </div>
-            <p class="text-slate-400 font-medium">No benchmark results yet</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 3: EXPORT REPORT -->
-    <div id="tab-export" class="tab-content h-full flex-col overflow-y-auto pb-6">
-      <div class="animate-slide-up">
-        <div class="glass rounded-2xl p-6 mb-6">
-          <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2 mb-1">
-            <i data-lucide="file-down" class="w-5 h-5 text-emerald-400"></i> Export Audit Report
-          </h2>
-          <p class="text-sm text-slate-400">Download or copy the full citation verification audit.</p>
-        </div>
-
-        <div id="export-content">
-          <div id="export-empty" class="glass rounded-2xl p-12 text-center">
-            <div class="w-20 h-20 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
-              <i data-lucide="clipboard-list" class="w-10 h-10 text-slate-600"></i>
-            </div>
-            <p class="text-slate-400 font-medium">No verification data to export</p>
-            <p class="text-xs text-slate-600 mt-1">Run a citation verification first.</p>
-          </div>
-
-          <div id="export-options" class="hidden grid md:grid-cols-2 gap-4">
-            <!-- JSON Export -->
-            <div class="glass rounded-2xl p-6 hover:border-indigo-500/30 transition-all group cursor-pointer" id="btn-export-json">
-              <div class="flex items-start gap-4">
-                <div class="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center shrink-0 group-hover:bg-indigo-500/20 transition-colors">
-                  <i data-lucide="braces" class="w-6 h-6 text-indigo-400"></i>
-                </div>
-                <div>
-                  <h3 class="text-base font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">Download JSON Audit</h3>
-                  <p class="text-sm text-slate-400 mt-1">Machine-readable structured data format (.json).</p>
-                </div>
-              </div>
-            </div>
-            <!-- Markdown Export -->
-            <div class="glass rounded-2xl p-6 hover:border-emerald-500/30 transition-all group cursor-pointer" id="btn-export-md">
-              <div class="flex items-start gap-4">
-                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
-                  <i data-lucide="file-text" class="w-6 h-6 text-emerald-400"></i>
-                </div>
-                <div>
-                  <h3 class="text-base font-semibold text-slate-200 group-hover:text-emerald-300 transition-colors">Download Markdown Audit</h3>
-                  <p class="text-sm text-slate-400 mt-1">Human-readable report for documentation sharing (.md).</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB 4: HISTORY / PREVIOUS ANALYSES -->
-    <div id="tab-history" class="tab-content h-full overflow-y-auto pb-6">
-      <div class="animate-slide-up">
-        <div class="glass rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
-              <i data-lucide="history" class="w-5 h-5 text-indigo-400"></i>
-              My Analysis History
-            </h2>
-            <p class="text-sm text-slate-400 mt-1">Review past verification runs and instantly re-load reports into the Inspector</p>
-          </div>
-          <button id="btn-refresh-history" class="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-colors shadow-sm">
-            <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Refresh History
-          </button>
-        </div>
-
-        <div id="history-container">
-          <!-- State 1: Logged Out -->
-          <div id="history-logged-out" class="glass rounded-2xl p-12 text-center">
-            <div class="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
-              <i data-lucide="lock" class="w-8 h-8 text-indigo-400"></i>
-            </div>
-            <h3 class="text-base font-semibold text-slate-200">Sign in to Access Your History</h3>
-            <p class="text-xs text-slate-400 mt-1.5 max-w-sm mx-auto">Create a free account or sign in to automatically store your verification reports and review them anytime.</p>
-            <button id="btn-history-signin" class="mt-5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-500/20 transition-all inline-flex items-center gap-2">
-              <i data-lucide="user" class="w-4 h-4"></i> Sign In / Register
-            </button>
-          </div>
-
-          <!-- State 2: Logged In but No Analyses -->
-          <div id="history-empty" class="hidden glass rounded-2xl p-12 text-center">
-            <div class="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mx-auto mb-4">
-              <i data-lucide="inbox" class="w-8 h-8 text-slate-600"></i>
-            </div>
-            <h3 class="text-base font-semibold text-slate-300">No previous analyses found</h3>
-            <p class="text-xs text-slate-500 mt-1.5 max-w-sm mx-auto">Verify citations on any paper in the Inspector tab, and your results will be automatically archived here.</p>
-          </div>
-
-          <!-- State 3: History List Cards Grid -->
-          <div id="history-list" class="hidden grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Dynamically populated analysis cards -->
-          </div>
-        </div>
-      </div>
-    </div>
   </main>
 
-  <!-- AUTH MODAL -->
-  <div id="auth-modal" class="hidden fixed inset-0 z-[150] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="glass max-w-md w-full rounded-2xl p-6 sm:p-8 border border-slate-700/60 shadow-2xl animate-slide-up relative">
-      <button id="btn-close-auth" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-800/50 transition-colors">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-
-      <div class="flex items-center gap-3 mb-6">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-          <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
-        </div>
-        <div>
-          <h3 class="text-lg font-bold text-slate-100" id="auth-modal-title">Welcome to CiteGuard</h3>
-          <p class="text-xs text-slate-400">Save and track all your citation verification audits</p>
-        </div>
-      </div>
-
-      <!-- Tabs: Sign In / Register -->
-      <div class="flex bg-slate-900/60 p-1 rounded-xl mb-5 border border-slate-800/60">
-        <button id="tab-auth-login" class="flex-1 py-2 text-xs font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-sm">
-          Sign In
-        </button>
-        <button id="tab-auth-register" class="flex-1 py-2 text-xs font-semibold rounded-lg transition-all text-slate-400 hover:text-slate-200">
-          Create Account
-        </button>
-      </div>
-
-      <form id="auth-form" class="space-y-4">
-        <div id="field-username-group">
-          <label class="block text-xs font-medium text-slate-300 mb-1" id="label-username">Username or Email</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-              <i data-lucide="user" class="w-4 h-4"></i>
-            </div>
-            <input type="text" id="auth-username" required class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="Enter username or email" />
-          </div>
-        </div>
-
-        <div id="field-email-group" class="hidden">
-          <label class="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-              <i data-lucide="mail" class="w-4 h-4"></i>
-            </div>
-            <input type="email" id="auth-email" class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="name@domain.com" />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-              <i data-lucide="lock" class="w-4 h-4"></i>
-            </div>
-            <input type="password" id="auth-password" required minlength="6" class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all" placeholder="••••••••" />
-          </div>
-        </div>
-
-        <div id="auth-error" class="hidden p-3 bg-red-950/50 border border-red-800/60 rounded-xl text-xs text-red-300 flex items-center gap-2">
-          <i data-lucide="alert-circle" class="w-4 h-4 text-red-400 shrink-0"></i>
-          <span id="auth-error-text">Authentication error</span>
-        </div>
-
-        <button type="submit" id="btn-auth-submit" class="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2">
-          <span id="auth-submit-label">Sign In</span>
-        </button>
-      </form>
-    </div>
-  </div>
-
   <div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2"></div>
-
   <script src="app.js"></script>
 </body>
 </html>
